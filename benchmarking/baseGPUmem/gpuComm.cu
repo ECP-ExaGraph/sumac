@@ -21,13 +21,13 @@ void GPU_copy(int numDevices, size_t size, float* elapsed_t){
 	float** data = new float*[numDevices];
 	for(int dev = numDevices-2; dev>=0;dev--){
 		gpuErrchk(cudaSetDevice(dev));
-		gpuErrchk(cudaDeviceEnablePeerAccess(dev+1,0));
+		cudaDeviceEnablePeerAccess(dev+1,0);
 		gpuErrchk(cudaMalloc(&data[dev],size));
 
 		gpuErrchk(cudaSetDevice(dev+1));
 		gpuErrchk(cudaEventCreate(&start));
 		gpuErrchk(cudaEventCreate(&fin));
-		gpuErrchk(cudaDeviceEnablePeerAccess(dev,0));
+		cudaDeviceEnablePeerAccess(dev,0);
 		gpuErrchk(cudaMalloc(&data[dev+1],size));
 		
 		gpuErrchk(cudaEventRecord(start));
@@ -36,7 +36,7 @@ void GPU_copy(int numDevices, size_t size, float* elapsed_t){
 		gpuErrchk(cudaEventSynchronize(fin));
 			
 		gpuErrchk(cudaEventElapsedTime(&elapsed_t[dev],start,fin));		
-		
+	
 		cudaSetDevice(dev);
 		cudaFree(data[dev]);
 		cudaSetDevice(dev+1);
@@ -53,12 +53,16 @@ void GPU_copy(int numDevices, size_t size, float* elapsed_t){
 
 int main(){
 	
-	int numDevices = 6;
-	long dataCount = 1000000;
+	int numDevices = 8;
+	long dataSize = 512;
 	float* elapsed_t = new float[numDevices-1];
-	GPU_copy(numDevices,dataCount,elapsed_t);
-	for(int t=0;t<numDevices-1;t++){
-		printf("Transfer time (Size = %d) : %d -> %d : %f\n",dataCount, t+1,t,elapsed_t[t]);
+	for(dataSize = 512; dataSize<1000000000;dataSize*=2){
+	GPU_copy(numDevices,dataSize,elapsed_t);
+		for(int t=0;t<numDevices-1;t++){
+			//printf("Transfer time (Size = %d) : %d -> %d : %f\n",dataSize, t+1,t,elapsed_t[t]);
+			printf("%d,%ld,%f\n",t,dataSize,((dataSize/elapsed_t[t])*1000)/1e9);
+		}
+		cudaDeviceSynchronize();
 	}
 	free(elapsed_t);	
 	return 0;
