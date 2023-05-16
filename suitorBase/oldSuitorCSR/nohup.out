@@ -1,0 +1,454 @@
+Graph created
+LinGap: 6162719919201
+Starting desiredSwaps, 624567
+Finished desiredSwaps
+Graph created
+LinGap: 1718393415245961
+Starting desiredSwaps, 6560836
+Finished desiredSwaps
+Graph created
+LinGap: 6162719919201
+Starting desiredSwaps, 31
+Finished desiredSwaps
+LinGapAfterRefine: 6162719919201
+Graph created
+LinGap: 6162719919201
+Starting desiredSwaps, 312
+Finished desiredSwaps
+LinGapAfterRefine: 6162696811503
+Graph created
+LinGap: 6162719919201
+Starting desiredSwaps, 3122
+Finished desiredSwaps
+LinGapAfterRefine: 6162522567996
+Graph created
+LinGap: 6162719919201
+Starting desiredSwaps, 31228
+Finished desiredSwaps
+LinGapAfterRefine: 6159363141358
+Graph created
+LinGap: 6162719919201
+Starting desiredSwaps, 156141
+Finished desiredSwaps
+LinGapAfterRefine: 6143559190929
+Graph created
+LinGap: 1718393415245961
+Starting desiredSwaps, 6560836
+Finished desiredSwaps
+Graph created
+LinGap: 1718393415245961
+Starting desiredSwaps, 65608
+Finished desiredSwaps
+Graph created
+LinGap: 1718393415245961
+Starting desiredSwaps, 656
+Finished desiredSwaps
+Graph created
+LinGap: 1718393415245961
+Starting desiredSwaps, 65608
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718384931422313
+Graph created
+LinGap: 1718393415245961
+Starting desiredSwaps, 6560836
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1717768320285245
+Graph created
+LogGap: 37105805319.131622
+Starting desiredSwaps, 65608
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 37105592939.534599
+Graph created
+LogGap: 101561420604.245697
+Starting desiredSwaps, 1684868
+Graph created
+LogGap: 101561420604.245697
+Starting desiredSwaps, 16848
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 101561413633.440018
+Graph created
+LinGap: 432588788675183576
+Starting desiredSwaps, 16848
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 432588577786097642
+Graph created
+LinGap: 432588788675183576
+Starting desiredSwaps, 16848
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 432588577113270770
+Graph created: /data/graphs/friendster.rabbit.ebin
+LinGap: 1411241445325896
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1411241445045026
+Graph created: /data/graphs/friendster.rabbit.ebin
+LinGap: 1411241445325896
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1411241445044821
+Graph created: /data/graphs/friendster.rabbit.ebin
+LogGap: 31196663307.782665
+Starting desiredSwaps, 65608
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 31196662224.830162
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718385894471632
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718387457788108
+Graph created: /data/graphs/wdc-2012PLD.ebin
+LinGap: 987491599389992
+Starting desiredSwaps, 42889/42889800 (0.100000%)
+Finished desiredSwaps
+Graph created: /data/graphs/wdc-2012PLD.ebin
+LinGap: 987491599389992
+Starting desiredSwaps, 42889/42889800 (0.100000%)
+Finished desiredSwaps
+Graph created: /data/graphs/wdc-2012PLD.ebin
+LinGap: 987491599389992
+Starting desiredSwaps, 42889/42889800 (0.100000%)
+Finished desiredSwaps
+Graph created: /data/graphs/ClueWeb09.rabbit.ebin
+LinGap: 73793828738013413
+Starting desiredSwaps, 16848/1684868322 (0.001000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 73793828737945276
+Graph created: /data/graphs/ClueWeb09.rabbit.ebin
+LogGap: 46333686729.301636
+Starting desiredSwaps, 16848/1684868322 (0.001000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 46333680668.259308
+Graph created: /data/graphs/ClueWeb09.rabbit.linRefine.ebin
+LogGap: 46333682952.659271
+Starting desiredSwaps, 16848/1684868322 (0.001000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 46333679208.389153
+Graph created: /data/graphs/ClueWeb09.rabbit.logRefine.ebin
+LinGap: 73793828738011336
+Starting desiredSwaps, 16848/1684868322 (0.001000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 73793828737945334
+Graph created: /data/graphs/trianglemesh1.ebin
+LinGap: 14393523506
+Starting desiredSwaps, 18916/1891619 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 14371301680
+Graph created: /data/graphs/trianglemesh1.ebin
+LogGap: 301237.265364
+Starting desiredSwaps, 18916/1891619 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 300385.885444
+Graph created: /data/graphs/livejournal.ebin
+LinGap: 9699833456197
+Starting desiredSwaps, 484757/4847571 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 9628763075274
+Graph created: /data/graphs/livejournal.ebin
+LogGap: 562910565.061792
+Starting desiredSwaps, 484757/4847571 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 560307086.436004
+Graph created: /data/graphs/livejournal.rabbit.ebin
+LinGap: 5725371499309
+Starting desiredSwaps, 484757/4847571 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 5725367802960
+Graph created: /data/graphs/livejournal.rabbit.ebin
+LogGap: 436126571.336005
+Starting desiredSwaps, 484757/4847571 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 436089483.528232
+Graph created: /data/graphs/it-2004.ebin
+LinGap: 492036299077309
+Starting desiredSwaps, 4129068/41290682 (10.000000%)
+Graph created: /data/graphs/it-2004.ebin
+LinGap: 492036299077309
+Starting desiredSwaps, 412906/41290682 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 491171456625448
+Graph created: /data/graphs/it-2004.ebin
+LogGap: 3207962473.302274
+Starting desiredSwaps, 412906/41290682 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 3205479576.549220
+Graph created: /data/graphs/it-2004.rabbit.ebin
+LinGap: 56747216001953
+Starting desiredSwaps, 412906/41290682 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 56747201193492
+Graph created: /data/graphs/it-2004.rabbit.ebin
+LogGap: 3503292545.033066
+Starting desiredSwaps, 412906/41290682 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 3502915339.788341
+Graph created: /data/graphs/USA-road-d.ebin
+LinGap: 18419669317822
+Starting desiredSwaps, 23947/23947347 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 18411886278045
+Graph created: /data/graphs/USA-road-d.ebin
+LogGap: 288831231.783758
+Starting desiredSwaps, 23947/23947347 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 288739145.169752
+Graph created: /data/graphs/friendster.shingle.ebin
+LinGap: 1781932023192561
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1781928793514858
+Graph created: /data/graphs/friendster.shingle.ebin
+LogGap: 35550439392.660599
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 35550202830.090927
+Graph created: /data/graphs/clueweb09.shingle.ebin
+LinGap: 227901145123313858
+Starting desiredSwaps, 1684868/1684868322 (0.100000%)
+Finished desiredSwaps
+Graph created: /data/graphs/clueweb09.shingle.ebin
+LinGap: 227901145123313858
+Starting desiredSwaps, 16848/1684868322 (0.001000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 227901058042481773
+Graph created: /data/graphs/clueweb09.shingle.ebin
+LogGap: 68696259576.169640
+Starting desiredSwaps, 16848/1684868322 (0.001000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 68696255174.245293
+Graph created: /data/graphs/USA-road-d.shingle.ebin
+LinGap: 10673499961981
+Starting desiredSwaps, 239473/23947347 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 10664469853976
+Graph created: /data/graphs/USA-road-d.shingle.ebin
+LogGap: 178004417.354087
+Starting desiredSwaps, 239473/23947347 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 178008681.466930
+Graph created: /data/graphs/it-2004.shingle.ebin
+LinGap: 551152947968249
+Starting desiredSwaps, 412906/41290682 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 549427745843755
+Graph created: /data/graphs/it-2004.shingle.ebin
+LogGap: 2943859248.284572
+Starting desiredSwaps, 412906/41290682 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 2941483520.634714
+Graph created: /data/graphs/web-BerkStan.ebin
+LinGap: 40644142852
+Starting desiredSwaps, 68523/685230 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 31518564155
+Graph created: /data/graphs/web-BerkStan.ebin
+LogGap: 24350228.311838
+Starting desiredSwaps, 68523/685230 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 23353398.102261
+Graph created: /data/graphs/web-BerkStan.rabbit.ebin
+LinGap: 36179578772
+Starting desiredSwaps, 68523/685230 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 28532136934
+Graph created: /data/graphs/web-BerkStan.rabbit.ebin
+LogGap: 29922784.513382
+Starting desiredSwaps, 68523/685230 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 28824657.299791
+Graph created: /data/graphs/web-BerkStan.shingle.ebin
+LinGap: 89580434124
+Starting desiredSwaps, 68523/685230 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 50753879011
+Graph created: /data/graphs/web-BerkStan.shingle.ebin
+LogGap: 25470510.322191
+Starting desiredSwaps, 68523/685230 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 24175609.072243
+Graph created: /data/graphs/livejournal.shingle.ebin
+LinGap: 9042831363634
+Starting desiredSwaps, 48475/4847571 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 9038836985349
+Graph created: /data/graphs/livejournal.shingle.ebin
+LogGap: 558557672.268458
+Starting desiredSwaps, 48475/4847571 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 558268594.951027
+Graph created: /data/graphs/livejournal.ebin
+LogGap: 562910565.061792
+Starting desiredSwaps, 484757/4847571 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 560311790.139955
+Graph created: /data/graphs/USA-road-d.rabbit.ebin
+LinGap: 524801150754
+Starting desiredSwaps, 23947/23947347 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 524801143203
+Graph created: /data/graphs/USA-road-d.rabbit.ebin
+LogGap: 56952001.297746
+Starting desiredSwaps, 23947/23947347 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 56950197.029231
+Graph created: /data/graphs/trianglemesh1.shingle.ebin
+LinGap: 265942613
+Starting desiredSwaps, 18916/1891619 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 268158551
+Graph created: /data/graphs/trianglemesh1.shingle.ebin
+LogGap: 9042.486492
+Starting desiredSwaps, 18916/1891619 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 9042.486491
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718384851220085
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 656083/65608366 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718336976983325
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 6560836/65608366 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1717763021692885
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 3280418/65608366 (5.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718113522324680
+Graph created: /data/graphs/com-friendster.ebin
+LinGap: 1718393415245961
+Starting desiredSwaps, 328041/65608366 (0.500000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1718376064066787
+Graph created: /data/graphs/com-friendster.ebin
+LogGap: 37105805319.131615
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 37105598140.643227
+Graph created: /data/graphs/com-friendster.ebin
+LogGap: 37105805319.131615
+Starting desiredSwaps, 656083/65608366 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 37103855444.494408
+Graph created: /data/graphs/com-friendster.ebin
+LogGap: 37105805319.131615
+Starting desiredSwaps, 6560836/65608366 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 37084482064.905235
+Graph created: /data/graphs/com-friendster.ebin
+LogGap: 37105805319.131622
+Starting desiredSwaps, 3280418/65608366 (5.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 37095405022.908546
+Graph created: /data/graphs/ant1km.ebin
+LinGap: 97213924240
+Starting desiredSwaps, 13479/13479076 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 97207561974
+Graph created: /data/graphs/ant1km.ebin
+LinGap: 97213924240
+Starting desiredSwaps, 134790/13479076 (1.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 97196637301
+Graph created: /data/graphs/ant1km.ebin
+LinGap: 97213924240
+Starting desiredSwaps, 1347907/13479076 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 97194421563
+Graph created: /data/graphs/ant1km.ebin
+LogGap: 228151784.854116
+Starting desiredSwaps, 1347907/13479076 (10.000000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 220261834.640754
+Graph created: /data/graphs/com-friendster.ebin
+LogGap: 37105805319.131622
+Starting desiredSwaps, 65608/65608366 (0.100000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 37105592666.917198
+Graph created: /data/graphs/friendster.llp.ebin
+LinGap: 1824985843400668
+Starting desiredSwaps, 6560/65608366 (0.010000%)
+Finished desiredSwaps
+Swapped labels
+LinGapAfterRefine: 1824941042951644
+Graph created: /data/graphs/friendster.llp.ebin
+LogGap: 36555617421.599289
+Starting desiredSwaps, 6560/65608366 (0.010000%)
+Finished desiredSwaps
+Swapped labels
+LogGapAfterRefine: 36555617014.246536
+Graph created: /data/graphs/web-ClueWeb09.llp.ebin
+LinGap: 213735997716895220
+Starting desiredSwaps, 168486/1684868322 (0.010000%)
