@@ -245,5 +245,7 @@ class GraphGPU
     void set_community_ids();
     void compute_modularity_host();
     #endif
+    GraphElem** get_indices_device();
+    GraphElem* get_nv_device();
 };
 #endif

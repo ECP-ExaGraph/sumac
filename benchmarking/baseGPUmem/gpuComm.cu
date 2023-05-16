@@ -53,9 +53,12 @@ void GPU_copy(int numDevices, size_t size, float* elapsed_t){
 
 int main(){
 	
-	int numDevices = 8;
+	int numDevices = 4;
 	long dataSize = 512;
 	float* elapsed_t = new float[numDevices-1];
+	int deviceCount = 0;
+	cudaGetDeviceCount(&deviceCount);
+	printf("NumDevices: %d\n",deviceCount);
 	for(dataSize = 512; dataSize<1000000000;dataSize*=2){
 	GPU_copy(numDevices,dataSize,elapsed_t);
 		for(int t=0;t<numDevices-1;t++){

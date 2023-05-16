@@ -1041,6 +1041,13 @@ void GraphGPU::move_weights_to_host
     }
 }
 
+GraphElem** GraphGPU::get_indices_device(){
+    return indices_;
+}
+GraphElem* GraphGPU::get_nv_device(){
+    return nv_;
+}
+
 #ifdef MULTIPHASE
 /*
 void GraphGPU::shuffle_edge_list()
