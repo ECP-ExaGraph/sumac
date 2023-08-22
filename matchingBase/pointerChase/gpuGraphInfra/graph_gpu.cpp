@@ -1086,6 +1086,7 @@ void GraphGPU::run_pointer_chase()
         int vertsPerWarp = 80; 
         int threadCount = BLOCKDIM02;
         long long nblocks = (vertex_per_device_host_[id+1]-vertex_per_device_host_[id])/(vertsPerWarp*(threadCount/WARPSIZE))+1;
+        printf("%d - NumBlocks: %lld\n",id,nblocks);
         run_pointer_chase_cuda(indices_[id],edgeWeights_[id],edges_[id],mate_[id],matePtr_[id],partners_[id],partnersPtr_[id],ws_[id],
             vertex_per_device_[id],id,vertsPerWarp,nblocks,threadCount);
     }
@@ -1114,6 +1115,7 @@ void GraphGPU::move_edges_to_device_UVA()
                     std::cout << "range error\n";
                 GraphElem ne = e1_[host_id]-e0_[host_id];
                 CudaMemcpyUVA(edges_[host_id], edgesHost_+e0, sizeof(GraphElem)*ne);
+                CudaMemcpyUVA(edgeWeights_[host_id], edgeWeightsHost_+e0, sizeof(GraphWeight)*ne);
             }
         }
     }

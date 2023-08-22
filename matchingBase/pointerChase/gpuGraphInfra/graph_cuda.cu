@@ -2769,6 +2769,7 @@ void match_pointer_chase_kernel
     const unsigned int lane_id = threadIdx.x % 32;
     const unsigned int numWarps = blockDim.x / 32;
     const unsigned int block_id = blockIdx.x;
+    const unsigned int idxScheme = (numWarps*block_id + warp_id) * vertsPerWarp;
     
     unsigned int qSize = vertsPerWarp+1;
     unsigned int newQsize = 0;
@@ -2777,27 +2778,34 @@ void match_pointer_chase_kernel
     volatile GraphElem* local_vqueue = block_vqueue;
     if(lane_id < vertsPerWarp)
         for(int i=lane_id;i<vertsPerWarp;i+=WARPSIZE)
-            if((block_id * numWarps * vertsPerWarp) + (vertsPerWarp*warp_id) + i < vertex_per_device_[device_id+1] - vertex_per_device_[device_id])
-                local_vqueue[i] = (block_id * numWarps * vertsPerWarp) + (vertsPerWarp*warp_id) + i;
+            if( idxScheme + i < vertex_per_device_[device_id+1] - vertex_per_device_[device_id])
+                local_vqueue[i] = idxScheme + i;
 
-    double heaviest = -1.0;
-    int heaviestPartner = -1;
+    GraphWeight heaviest = -1.0;
+    GraphElem heaviestPartner = -1;
     for(int i=0;i<qSize-1;i++){
+        heaviest = -1.0;
+        heaviestPartner = -1;
         GraphElem qVal = local_vqueue[i];
         GraphElem adj1 = indices_[qVal];
         GraphElem adj2 = indices_[qVal+1];
-        for(int j=adj1;j<adj2;j+=WARPSIZE){ //Find heaviest edge among neighbors
+        for(int j=adj1+lane_id;j<adj2;j+=WARPSIZE){ //Find heaviest edge among neighbors
             GraphElem edge = edgeList_[j];
             GraphWeight weight = edgeWeights_[j];
-            if(weight>heaviest || (weight >= heaviest && edge<heaviestPartner)){
+            //if(qVal == 0){
+            //    printf("edge: %ld, weight: %lf\n",edge,weight);
+            //}
+            if(edge == qVal)
+                continue;
+            if(weight>heaviest || (weight >= heaviest && edge>heaviestPartner)){
                 heaviestPartner = edge;
                 heaviest = weight;
             }
         }
         
         for (int t=WARPSIZE/2; t>=1; t/=2) {
-            double reducedWeight = __shfl_xor_sync(0xFFFFFFFF, heaviest, t, WARPSIZE);
-            int reducedPartner = __shfl_xor_sync(0xFFFFFFFF, heaviestPartner, t, WARPSIZE);
+            GraphWeight reducedWeight = __shfl_xor_sync(0xFFFFFFFF, heaviest, t, WARPSIZE);
+            GraphElem reducedPartner = __shfl_xor_sync(0xFFFFFFFF, heaviestPartner, t, WARPSIZE);
             if (reducedWeight > heaviest) {
                 heaviest = reducedWeight;
                 heaviestPartner = reducedPartner;
@@ -2808,22 +2816,66 @@ void match_pointer_chase_kernel
                 }
             }
         }
-        partners_[i + (vertsPerWarp*warp_id)] = heaviestPartner;
-        ws_[i + (vertsPerWarp*warp_id)] = heaviest;
+        partners_[qVal] = heaviestPartner;
+        ws_[qVal] = heaviest;
+        /*
+        if( (threadIdx.x == 0) && blockIdx.x == 0 && device_id == 0 && qVal==0){
+        printf("Thread %d at shfl\n",threadIdx.x);
+        printf("%d - warp_id: %ld\n",threadIdx.x,warp_id);
+        printf("%d - qVal: %ld\n",threadIdx.x,qVal);
+        printf("%d - heaviestPart: %ld\n",threadIdx.x,heaviestPartner);
+        printf("%d - heaviest: %lf\n",threadIdx.x,heaviest);
+        printf("%d - partners[%ld]: %ld\n",threadIdx.x,qVal,partners_[qVal]);
+        printf("%d - partners[%ld]: %ld\n",threadIdx.x,partners_[qVal],partners_[partners_[qVal]]);
+        printf("%d - ws[%ld]: %lf\n",threadIdx.x,qVal,ws_[qVal]);
+        
+    }
+    if( (threadIdx.x == 0) && blockIdx.x == 0 && device_id == 0 && qVal==0){
+        printf("Thread %d at shfl2\n",threadIdx.x);
+        printf("%d - warp_id: %ld\n",threadIdx.x,warp_id);
+        printf("%d - qVal: %ld\n",threadIdx.x,qVal);
+        printf("%d - heaviestPart: %ld\n",threadIdx.x,heaviestPartner);
+        printf("%d - heaviest: %lf\n",threadIdx.x,heaviest);
+        printf("%d - partners[%ld]: %ld\n",threadIdx.x,qVal,partners_[qVal]);
+        printf("%d - partners[%ld]: %ld\n",threadIdx.x,partners_[qVal],partners_[partners_[qVal]]);
+        printf("%d - ws[%ld]: %lf\n",threadIdx.x,qVal,ws_[qVal]);
+        
+    }*/
+    }
+    __syncthreads();
+    if( (threadIdx.x == 0) && blockIdx.x == 0 && device_id == 0){
+        printf("Thread %d at shfl\n",threadIdx.x);
+        printf("%d - warp_id: %ld\n",threadIdx.x,warp_id);
+        printf("%d - qVal: %ld\n",threadIdx.x,0);
+        printf("%d - heaviestPart: %ld\n",threadIdx.x,heaviestPartner);
+        printf("%d - heaviest: %lf\n",threadIdx.x,heaviest);
+        printf("%d - partners[%d]: %ld\n",threadIdx.x,0,partners_[0]);
+        printf("%d - partners[%ld]: %ld\n",threadIdx.x,partners_[0],partners_[partners_[0]]);
+        printf("%d - ws[%d]: %lf\n",threadIdx.x,0,ws_[0]);
+        
     }
     for(int i=0;i<qSize-1;i++){
         GraphElem qVal = local_vqueue[i];
         GraphElem propVertex = partners_[qVal];
+        if(qVal==0 && threadIdx.x == 0 && blockIdx.x == 0 && warp_id == 0 ){
+            printf("%d - qVal: %ld\n",threadIdx.x,qVal);
+            printf("%d - propVertex: %ld\n",threadIdx.x,propVertex);
+        }
         if(propVertex < 0){
             continue;
         }
+        
         GraphElem prospPartner = 0;
         int targetGPU;
         for(targetGPU = 0;targetGPU<NGPU;targetGPU++){
             if(propVertex<vertex_per_device_[targetGPU+1])
                 break;
         }
+        
         prospPartner = partnersPtr_[targetGPU][propVertex-vertex_per_device_[targetGPU]];
+        if(threadIdx.x == 0 && blockIdx.x == 0 && (i == 0 || i==1))
+            printf("%ld - prospPartner: %ld, propVert: %ld\n",qVal,prospPartner,propVertex);
+        
         if(vertex_per_device_[device_id] + qVal == prospPartner){
             mate_[qVal] = propVertex;
         }
@@ -2832,67 +2884,77 @@ void match_pointer_chase_kernel
             newQsize+=1;
         }
     }
-    __syncwarp();
-    
+    //__syncwarp();
     
     qSize = newQsize+1;
     newQsize = 0;
     int iter = 0;
 
-
-    while(qSize>1 && iter<100000000){
-
-        heaviest = -1.0;
-        heaviestPartner = -1;
-
+    if(threadIdx.x == 0 && blockIdx.x == 0 && device_id == 0){
+        printf("Thread 0 here\n");
+        printf("partners[0]: %ld\n",partners_[0]);
+        printf("ws[0]: %lf\n",ws_[0]);
+        printf("mate[0]: %ld\n",mate_[0]);
+    }
+                
+    while(qSize>1 && iter<4){
+    //while(qSize>1){
         for(int i=0;i<qSize-1;i++){
-
+            heaviest = -1.0;
+            heaviestPartner = -1;
             GraphElem qVal = local_vqueue[i];
             GraphElem propVertex = partners_[qVal];
             if(propVertex < 0){
                 continue;
             }
-            int targetGPU;
-            for(targetGPU = 0;targetGPU<NGPU;targetGPU++){
-                if(propVertex<vertex_per_device_[targetGPU+1])
-                    break;
-            }
-            if(matePtr_[targetGPU][propVertex-vertex_per_device_[targetGPU]]!=-1){
-                GraphElem adj1 = indices_[qVal];
-                GraphElem adj2 = indices_[qVal+1];
-                for(int j=adj1;j<adj2;j+=WARPSIZE){ //Find heaviest edge among neighbors
-                    GraphElem edge = edgeList_[j];
-                    GraphWeight weight = edgeWeights_[j];
-                    if((weight>heaviest || (weight >= heaviest && edge<heaviestPartner)) && ((weight<ws_[qVal]) || (weight==ws_[qVal] && edge != partners_[qVal])) ){
+            GraphElem adj1 = indices_[qVal];
+            GraphElem adj2 = indices_[qVal+1];
+            for(int j=adj1+lane_id;j<adj2;j+=WARPSIZE){ //Find heaviest edge among neighbors
+                GraphElem edge = edgeList_[j];
+                GraphWeight weight = edgeWeights_[j];
+                if(weight>heaviest || (weight >= heaviest && edge>heaviestPartner)){
+                    int targetGPU;
+                    for(targetGPU = 0;targetGPU<NGPU;targetGPU++){
+                        if(edge<vertex_per_device_[targetGPU+1])
+                            break;
+                    }
+                    if(matePtr_[targetGPU][edge-vertex_per_device_[targetGPU]]==-1){
                         heaviestPartner = edge;
                         heaviest = weight;
                     }
                 }
-                for (int t=WARPSIZE/2; t>=1; t/=2) {
-                    double reducedWeight = __shfl_xor_sync(0xFFFFFFFF, heaviest, t, WARPSIZE);
-                    int reducedPartner = __shfl_xor_sync(0xFFFFFFFF, heaviestPartner, t, WARPSIZE);
-                    if (reducedWeight > heaviest) {
-                        heaviest = reducedWeight;
+            }
+            for (int t=WARPSIZE/2; t>=1; t/=2) {
+                double reducedWeight = __shfl_xor_sync(0xFFFFFFFF, heaviest, t, WARPSIZE);
+                int reducedPartner = __shfl_xor_sync(0xFFFFFFFF, heaviestPartner, t, WARPSIZE);
+                if (reducedWeight > heaviest) {
+                    heaviest = reducedWeight;
+                    heaviestPartner = reducedPartner;
+                } else if (reducedWeight == heaviest) { // give priority to higher indexed candidate
+                    if (reducedPartner > heaviestPartner) {
                         heaviestPartner = reducedPartner;
-                    } else if (reducedWeight == heaviest) { // give priority to higher indexed candidate
-                        if (reducedPartner > heaviestPartner) {
-                            heaviestPartner = reducedPartner;
-                            heaviest = reducedWeight;
-                        }
+                        heaviest = reducedWeight;
                     }
                 }
-                if(heaviest == -1){
-                    continue;
-                }
-                else{
-                    partners_[i + (vertsPerWarp*warp_id)] = heaviestPartner;
-                    ws_[i + (vertsPerWarp*warp_id)] = heaviest;
-                }
             }
+             
+            
+            partners_[qVal] = heaviestPartner;
+            ws_[qVal] = heaviest;
+            if(threadIdx.x == 0 && blockIdx.x == 0 && device_id == 0 && qVal == 0){
+        printf("Thread 0 here in while thing\n");
+        printf("partners[%ld]: %ld\n",qVal,partners_[qVal]);
+        printf("partners[%ld]: %ld\n",partners_[qVal],partners_[partners_[qVal]]);
+        printf("mate[%ld]: %ld\n",qVal,mate_[qVal]);
+        printf("mate[%ld]: %ld\n",mate_[qVal],mate_[mate_[qVal]]);
+        printf("heaviestPartner 0: %ld\n",heaviestPartner);
+        printf("heaviest 0: %lf\n",heaviest);
+    }
         }
         for(int i=0;i<qSize-1;i++){
             GraphElem qVal = local_vqueue[i];
             GraphElem propVertex = partners_[qVal];
+            
             if(propVertex < 0){
                 continue;
             }
@@ -2903,6 +2965,14 @@ void match_pointer_chase_kernel
                     break;
             }
             prospPartner = partnersPtr_[targetGPU][propVertex-vertex_per_device_[targetGPU]];
+            /*if( threadIdx.x == 0 && blockIdx.x == 0 && device_id == 0 && i==0){
+                printf("%d - qVal: %ld\n",threadIdx.x,qVal);
+                printf("%d - propVertex: %ld\n",threadIdx.x,propVertex);
+                printf("%d - targetGPU: %d\n",threadIdx.x,targetGPU);
+                printf("%d - prospPartner: %ld\n",threadIdx.x,prospPartner);
+                printf("%d - partPtr: %ld\n",threadIdx.x,partnersPtr_[0][0]);
+            }*/
+
             if(vertex_per_device_[device_id] + qVal == prospPartner){
                 mate_[qVal] = propVertex;
             }
@@ -2914,8 +2984,22 @@ void match_pointer_chase_kernel
         qSize = newQsize + 1;
         newQsize = 0;
         iter+=1;
+        if(threadIdx.x == 0 && blockIdx.x == 0 && device_id == 0){
+        printf("Thread 0 here\n");
+        printf("partners[0]: %ld\n",partners_[0]);
+        printf("ws[0]: %lf\n",ws_[0]);
+        printf("mate[0]: %ld\n",mate_[0]);
+        printf("partners[24]: %ld\n",partners_[24]);
+        printf("partners[23]: %ld\n",partners_[23]);
+        printf("mate[24]: %ld\n",mate_[24]);
+    }
+        //if(threadIdx.x == 0){
+        //    printf("%d %d - qSize: %d\n",threadIdx.x,blockIdx.x,qSize);
+        //}
         __syncwarp();
     }
+    //if(threadIdx.x == 0)
+    //    printf("Thread: %d:%d Done\n",blockIdx.x,threadIdx.x);
     
 
     
@@ -2941,6 +3025,7 @@ void run_pointer_chase_cuda
 )
 {
     nblocks = (nblocks > MAX_GRIDDIM) ? MAX_GRIDDIM : nblocks;
+    printf("%d - %lld\n",device_id,nblocks);
     int shmemSize = ((vertsPerWarp*(threadCount/WARPSIZE))+1)*sizeof(GraphElem);
     CudaSetDevice(device_id);
     //Run Kernel

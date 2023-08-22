@@ -30,7 +30,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 int main(int argc, char** argv)
 {
     Graph* graph = nullptr;
-    std::string inputFileName = "/data/graphs/U1a.bin";
+    std::string inputFileName = "/home/mandum/PNNLwork/G33.bin";
     graph = new Graph(inputFileName);
     float* elapsed_t = new float[NGPU-1];
     GraphGPU* graph_gpu = new GraphGPU(graph, DEFAULT_BATCHES, 1, 1);
