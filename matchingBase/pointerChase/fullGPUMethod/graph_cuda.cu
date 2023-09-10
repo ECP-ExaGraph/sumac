@@ -2891,15 +2891,19 @@ void fix_mate_kernel
     GraphElem** matePtr_,
     int device_id,
     int batch_id,
-    int threadCount,
+    int vertsPerThread,
     char* finishFlag
 )
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     
     
-    for(GraphElem currVert=vertex_per_batch_[batch_id]+tid;currVert<vertex_per_batch_[batch_id+1];currVert+=threadCount){
-        GraphElem currVertIdx = currVert - vertex_per_batch_[batch_id];
+    for(int i=0;i<vertsPerThread;i++){
+        GraphElem currVert = (tid*vertsPerThread + i) + vertex_per_batch_[batch_id];
+        if(currVert>=vertex_per_batch_[batch_id+1]){
+            break;
+        }
+        GraphElem currVertIdx = tid*vertsPerThread + i;
         GraphElem currVertIdxDevice = currVert-vertex_per_device_[device_id];
         GraphElem currPartner = partners_[currVertIdxDevice];
         int targetGPU = find_target_GPU(currPartner,vertex_per_device_);
@@ -2975,10 +2979,11 @@ void run_pointer_chase_p2
 {
     //nblocks = (nblocks > MAX_GRIDDIM) ? MAX_GRIDDIM : nblocks;
     long long nblocks = MAX_GRIDDIM;
+    int vertsPerThread = ((vertex_per_batch_[batch_id+1] - vertex_per_batch_[batch_id])/(threadCount*nblocks))+1;
     CudaSetDevice(device_id);
     //Run Mate Kernel
     CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
-    (vertex_per_batch_device_,vertex_per_device_,partners_,mate_,partnersPtr_,matePtr_,device_id,batch_id,threadCount,finishFlag)));
+    (vertex_per_batch_device_,vertex_per_device_,partners_,mate_,partnersPtr_,matePtr_,device_id,batch_id,vertsPerThread,finishFlag)));
     gpuErrchk( cudaPeekAtLastError() );
     gpuErrchk( cudaDeviceSynchronize() );
     

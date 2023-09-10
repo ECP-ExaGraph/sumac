@@ -30,8 +30,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 int main(int argc, char** argv)
 {
     Graph* graph = nullptr;
-    //std::string inputFileName = "/home/mandum/PNNLwork/G33.bin";
-    std::string inputFileName = "/data/graphs/U1a.bin";
+    std::string inputFileName = "/home/mandum/PNNLwork/G33.bin";
+    //std::string inputFileName = "/data/graphs/U1a.bin";
     graph = new Graph(inputFileName);
 
     GraphGPU* graph_gpu = new GraphGPU(graph, 4, 1, 1);
