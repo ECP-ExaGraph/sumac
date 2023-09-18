@@ -2,10 +2,10 @@ NVCC:=nvcc
 CC:=g++
 
 SM=70
-NGPU=4
+NGPU=8
 graph_ft_load=0
 check=0
-debug=1
+debug=0
 ifeq ($(debug), 1)
 	CUFLAGS = -g -G -Ddebug --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
                   -Xcompiler -fopenmp -DMULTIPHASE -DNGPU=${NGPU} -DPRINT

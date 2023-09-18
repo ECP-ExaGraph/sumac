@@ -8,11 +8,13 @@
 #include <cstdint>
 #include <climits>
 #include <set>
+#include <cuda_runtime.h>
 
 #include "graph.hpp"
 #include "types.hpp"
 #include "heap.hpp"
 #include "cuda_wrapper.hpp"
+
 Int Graph::get_num_vertices()
 {
     return totalVertices_;

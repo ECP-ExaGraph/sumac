@@ -2,9 +2,10 @@
 #include <iostream>
 #include <string>
 #include <omp.h>
+#include <cuda_runtime.h>
+#include "types.hpp"
 #include "graph.hpp"
 #include "graph_gpu.hpp"
-#include "types.hpp"
 #include "cuda_wrapper.hpp"
 
 #include <unistd.h>
@@ -30,8 +31,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 int main(int argc, char** argv)
 {
     Graph* graph = nullptr;
-    std::string inputFileName = "/home/mandum/PNNLwork/G33.bin";
-    //std::string inputFileName = "/data/graphs/U1a.bin";
+    std::string inputFileName = argv[1];
     graph = new Graph(inputFileName);
 
     GraphGPU* graph_gpu = new GraphGPU(graph, 4, 1, 1);
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     end = omp_get_wtime(); 
 
     printf("Finished Matching\n");
-    printf("Time Elapsed: %f seconds\n", end - start);
+    printf("Total Time Elapsed: %f seconds\n", end - start);
 
     
     return 0;

@@ -5,7 +5,9 @@ SM=70
 NGPU=4
 graph_ft_load=0
 check=0
-debug=1
+debug=0
+#NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.18.3-1_cuda-12.0_gcc-9.4.0
+NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.17.1-1_gcc-9.4.0-1ubuntu1-20.04/lib
 ifeq ($(debug), 1)
 	CUFLAGS = -g -G -Ddebug --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
                   -Xcompiler -fopenmp -DMULTIPHASE -DNGPU=${NGPU} -DPRINT
@@ -13,7 +15,8 @@ ifeq ($(debug), 1)
 else 
 	CUFLAGS = -O3 -Xptxas -O3 --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
                   -Xcompiler -O3 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
-	CFLAGS = -O3 -std=c++14 -Wextra -Wall -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
+	CFLAGS = -O3 -std=c++14 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
+	LDFLAGS = -L${NCCL_PATH} -lnccl
 endif
 
 ifeq ($(check),1)
@@ -45,34 +48,34 @@ EXE:= pcMatchGPU
 all: ${EXE}
 
 graph.o: graph.cpp graph.hpp types.hpp
-	${NVCC} -x cu ${CUFLAGS} -dc -c $< -o $@
+	${NVCC} ${CFLAGS} -c $< -o $@
 
 graph_gpu.o: graph_gpu.cpp graph_gpu.hpp cuda_wrapper.hpp types.hpp
-	${NVCC} -x cu ${CUFLAGS} -dc -c $< -o $@
+	${NVCC} ${CFLAGS} -c $< -o $@
 
 main.o: main.cpp graph.hpp graph_gpu.hpp cuda_wrapper.hpp types.hpp
-	${NVCC} -x cu ${CUFLAGS} -dc -c $< -o $@
+	${NVCC} ${CFLAGS} -I/usr/local/cuda/include -c $< -o $@
 
 graph_cuda.o: graph_cuda.cu graph_cuda.hpp graph.cpp graph.hpp
-	${NVCC} ${CUFLAGS} -c $< -o $@
+	${NVCC} ${CFLAGS} -c $< -o $@
 
 heap.o : heap.cpp heap.hpp types.hpp
-	${NVCC} -x cu ${CUFLAGS} -dc -c $< -o $@
+	${NVCC} ${CFLAGS} -c $< -o $@
 
 clustering.o: clustering.cpp clustering.hpp types.hpp
-	${NVCC} -x cu ${CUFLAGS} -dc -c $< -o $@
+	${NVCC} ${CFLAGS} -c $< -o $@
 
 ifeq ($(check),1)
 graph_cpu.o: graph_cpu.cpp graph_cpu.hpp
-	${NVCC} -x cu ${CUFLAGS} -dc -c $< -o $@
+	${NVCC} ${CFLAGS} -c $< -o $@
 endif
 
 ifeq ($(check),1)
 ${EXE}: graph_gpu.o graph_cuda.o graph.o main.o heap.o clustering.o graph_cpu.o
-	${NVCC} ${CUFLAGS} $^ -o $@
+	${NVCC} ${CFLAGS} $^ -o $@
 else
 ${EXE}: graph_gpu.o graph_cuda.o graph.o main.o heap.o clustering.o
-	${NVCC} ${CUFLAGS} $^ -o $@
+	${NVCC} ${CFLAGS} $^ -o $@ ${LDFLAGS}
 endif
 
 clean:

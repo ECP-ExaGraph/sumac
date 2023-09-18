@@ -2,6 +2,7 @@
 #define CUDA_WRAPPER_HPP_
 
 #include <iostream>
+#include <cuda_runtime.h>
 #ifdef debug
 #define CudaCall(ans) { CudaAssert((ans), __FILE__, __LINE__); }
 inline void CudaAssert(cudaError_t code, const char *file, int line, bool abort=true)

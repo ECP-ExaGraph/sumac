@@ -1,6 +1,7 @@
 #ifndef TYPES_HPP_
 #define TYPES_HPP_
 #include <cstdint>
+#include <cuda_runtime.h>
 #ifdef USE_32_BIT_GRAPH
 using GraphElem = int32_t;
 using GraphWeight = float;

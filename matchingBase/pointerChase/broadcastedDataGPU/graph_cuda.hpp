@@ -379,15 +379,13 @@ void run_pointer_chase_p1
     GraphWeight* edgeWeights_,
     GraphElem* edgeList_,
     GraphElem* mate_,
-    GraphElem** matePtr_,
     GraphElem* partners_,
-    GraphElem** partnersPtr_,
     GraphElem* vertex_per_batch_device_,
     GraphElem* vertex_per_batch_,
-    GraphElem* vertex_per_device,
-    const int device_id,
-    const int batch_id,
-    const int threadCount
+    GraphElem* vertex_per_device_,
+    int device_id,
+    int batch_id,
+    int threadCount
 );
 
 void run_pointer_chase_p2
@@ -396,9 +394,7 @@ void run_pointer_chase_p2
     GraphWeight* edgeWeights_,
     GraphElem* edgeList_,
     GraphElem* mate_,
-    GraphElem** matePtr_,
     GraphElem* partners_,
-    GraphElem** partnersPtr_,
     GraphElem* vertex_per_batch_device_,
     GraphElem* vertex_per_batch_,
     GraphElem* vertex_per_device_,
