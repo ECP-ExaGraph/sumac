@@ -1,0 +1,42 @@
+#CC = icc
+CC = gcc
+#TARGET = driverForColoring
+#TARGET = driverForMatching
+TARGET = driverForChordal
+#TARGET = driverForBFS
+#CFLAGS = -fast -xW -openmp -std=c99                        #Intel Opt
+###CFLAGS = -g -debug inline_debug_info -O3 -openmp -std=c99 #Intel Debug
+
+CFLAGS = -O3 -fopenmp -std=c99                            #GCC Opt
+
+LDFLAGS =  $(CFLAGS)
+INCLUDES = $(SNAP_HOME)/include
+LIBS = $(SNAP_HOME)/lib -lsnap -lm
+
+OBJECTS = coloringDistanceOneParallelIterative.o coloringDistanceOneSerial.o \
+          matchingHalfApproxDominating.o matchingHalfApproxDominatingSerial.o \
+	  maximalChordalSubgraph.o \
+          writeGraphDimacsFormat.o \
+          breadthFirstSearch.o $(TARGET).o
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) -L$(LIBS)
+
+.c.o:
+	$(CC) $(CFLAGS) -c $< -I$(INCLUDES) -o $@
+
+clean:
+	rm -f $(TARGET) $(OBJECTS)
+
+message:
+	echo "Executable: $(TAGRET) has been created"
+
+
+
+
+#OBJECTS = coloringDistanceOneParallelIterative.o coloringDistanceOneSerial.o \
+#          writeGraphDimacsFormat.o matchingHalfApproxDominating.o \
+#	   matchingHalfApproxDominatingSerial.o \
+#          $(TARGET).o

@@ -1,0 +1,29 @@
+#CC = /opt/SUNWspro/bin/cc
+CC = gcc
+#TARGET = driverForColoring
+TARGET = driverForMatching
+#CFLAGS = -fast -xopenmp -m64
+CFLAGS = -O3 -fopenmp -std=c99	
+#LDFLAGS =  $(CFLAGS) -lmtmalloc
+LDFLAGS =  $(CFLAGS)
+INCLUDES = $(SNAP_HOME)/include
+LIBS = $(SNAP_HOME)/lib -lsnap -lm
+
+OBJECTS = coloringDistanceOneParallelIterative.o coloringDistanceOneSerial.o \
+          writeGraphDimacsFormat.o matchingHalfApproxDominating.o \
+	  matchingHalfApproxDominatingSerial.o \
+          $(TARGET).o
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) -L$(LIBS)
+
+.c.o:
+	$(CC) $(CFLAGS) -c $< -I$(INCLUDES) -o $@
+
+clean:
+	rm -f $(TARGET) $(OBJECTS)
+
+message:
+	echo "Executable: $(TAGRET) has been created"

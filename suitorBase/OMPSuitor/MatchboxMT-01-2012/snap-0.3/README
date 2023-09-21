@@ -1,0 +1,18 @@
+SNAP: Small-world Network Analysis and Partitioning
+version 0.2
+
+SNAP (Small-world Network Analysis and Partitioning) is an extensible parallel
+framework for exploratory analysis and partitioning of large-scale networks.
+
+SNAP is implemented in C, uses POSIX threads and OpenMP primitives for
+parallelization, and targets sequential, multicore, and symmetric multiprocessor
+platforms. Our intent with SNAP is to provide a simple and intuitive interface
+for network analysis and application design, hiding the parallel programming
+complexity from the user. In addition to path-based, centrality, and community
+identification queries on large-scale graphs, we support commonly-used
+preprocessing kernels and quantitative measures that consider the global network
+topology.
+
+Please refer to the SNAP user's guide 
+(http://snap-graph.sourceforge.net/snap_ug.pdf) for installation instructions.
+

@@ -1,0 +1,10 @@
+#RMAT-Good: Scale 27
+n 134217728
+m 1073741824
+undirected 1
+weight_type 1
+max_weight 1073741824
+min_weight 0
+a 0.45
+b 0.15
+c 0.15

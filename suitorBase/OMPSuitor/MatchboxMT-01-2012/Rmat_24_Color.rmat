@@ -1,0 +1,27 @@
+# Configuration for R-MAT graph with 2^24 vertices
+
+# The number of vertices is given by n
+n 16777216
+
+# The number of edges is denoted by m
+m 132317157
+
+# Set undirected to 1 for a undirected graph, 0 otherwise
+undirected 1
+
+# Edge weights: 0 for unweighted, 1 for integer weight, 2 for long weights
+#               3 for floats, 4 for doubles
+weight_type 0
+
+# Max edge weight
+max_weight 0
+	
+# Min edge weight
+min_weight 0
+
+a 0.55
+b 0.15
+c 0.15
+
+#Permute vetices to prevent locality effects: 1 for yes (default is yes)
+permute_vertices 0
