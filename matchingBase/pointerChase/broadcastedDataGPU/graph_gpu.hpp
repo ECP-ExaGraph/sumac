@@ -187,7 +187,7 @@ class GraphGPU
     );
 
   public:
-    GraphGPU (Graph* graph, const int& nbatches, const int& part_on_deivce, const int& part_on_batch);
+    GraphGPU (Graph* graph, const int& nbatches, const int& part_on_deivce, const int& part_on_batch, const int& edgebal);
     ~GraphGPU();
 
     void set_community_ids(GraphElem* commIds);

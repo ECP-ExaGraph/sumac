@@ -23,10 +23,11 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 	}
 }
 
-GraphGPU::GraphGPU(Graph* graph, const int& nbatches, const int& part_on_device, const int& part_on_batch) : 
+GraphGPU::GraphGPU(Graph* graph, const int& nbatches, const int& part_on_device, const int& part_on_batch, const int& edgebal) : 
 graph_(graph), nbatches_(nbatches), part_on_device_(part_on_device), part_on_batch_(part_on_batch), 
 NV_(0), NE_(0), maxOrder_(0), mass_(0)
 {
+    //printf("Starting GraphGPU\n");
     NV_ = graph_->get_num_vertices();
     NE_ = graph_->get_num_edges();
 
@@ -35,9 +36,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     edgeWeightsHost_ = graph_->get_edge_weights();
     edgesHost_       = graph_->get_edges();
 
-
     determine_edge_device_partition();
-
     omp_set_num_threads(NGPU);
     #pragma omp parallel
     {
@@ -62,21 +61,20 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     }
 
 
-    #ifdef MULTIPHASE
-    buffer_ = malloc(unit_size*NE_);
-    commIdsHost_ = new GraphElem [NV_];
-    vertexIdsHost_ = new GraphElem [NV_];
-    vertexIdsOffsetHost_ = new GraphElem [NV_];
-    sortedVertexIdsHost_ = (GraphElem2*)malloc(sizeof(GraphElem2)*(NV_+1));
 
-    clusters_ = new Clustering(NV_);
-    #endif
+    if(edgebal==1){
+        //printf("Balancing Edges in Batches\n");
+        degree_based_edge_batch_partition();
+    }
+    else{
+        //printf("Logical Batching\n");
+        partition_graph_edge_batch();
+    }
 
-
-    printf("Starting edge batch part\n");
-    partition_graph_edge_batch();
+    //printf("Starting edge batch part\n");
+    //partition_graph_edge_batch();
     //degree_based_edge_batch_partition();
-    printf("Finished edge batch part\n");
+    //printf("Finished edge batch part\n");
      #pragma omp parallel
     {
         int id =  omp_get_thread_num() % NGPU;   
@@ -97,7 +95,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
                 maxne = newne;
     }
 
-    printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
+    //printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
     CudaMallocHost(indices_[id],       sizeof(GraphElem)   * (maxnv+1));
     //CudaMalloc(vertexWeights_[id], sizeof(GraphWeight) * maxnv);
 
@@ -285,7 +283,7 @@ GraphElem GraphGPU::binarySearchIdx(GraphElem arr[], GraphElem l, GraphElem r, G
 
             // Update the closest index
             if (closestIdx == -1 || abs(arr[mid] - val) < abs(arr[closestIdx] - val)) {
-                closestIdx = mid+1;
+                closestIdx = mid;
             }
         }
     }
@@ -304,24 +302,24 @@ void GraphGPU::degree_based_edge_batch_partition(){
         
         GraphElem v0 = vertex_per_device_host_[g];
         GraphElem v1 = vertex_per_device_host_[g+1];
-        printf("Starting GPU %d: v0: %ld v1: %ld\n",g,v0,v1);
+        //printf("Starting GPU %d: v0: %ld v1: %ld\n",g,v0,v1);
         vertex_per_batch_[g][0] = v0;
-        printf("Index Start: %ld - %ld\n",indicesHost_[33823615],indicesHost_[33823616]);
 
-        for(int b=0;b<nbatches_+1;b++){
-            if(b==nbatches_){
-                vertex_per_batch_[g][b] = v1;
-                break;
-            }
-            GraphElem valForCut = ((b+1)*((indicesHost_[v1]-indicesHost_[v0])/nbatches_))+indicesHost_[v0];
-            printf("Bin Search for %ld between v0:%ld and v1:%ld\n",valForCut,indicesHost_[v0],indicesHost_[v1]);
-            GraphElem cut = binarySearchIdx(indicesHost_,v0,v1,valForCut);
-            printf("GPU: %d, v0: %ld v1: %ld - cut at %ld\n",g,v0,v1,cut);
-            vertex_per_batch_[g][b+1] = cut;
+        if(nbatches_==1){
+            vertex_per_batch_[g][1] = v1;
         }
-        printf("Batch Split GPU %d:\n",g);
-        for(int i=0;i<nbatches_;i++){
-            printf("V0: %ld - V1: %ld\n",vertex_per_batch_[g][i],vertex_per_batch_[g][i+1]);
+        else{
+            for(int b=0;b<nbatches_+1;b++){
+                if(b==nbatches_){
+                    vertex_per_batch_[g][b] = v1;
+                    break;
+                }
+                GraphElem valForCut = ((b+1)*((indicesHost_[v1]-indicesHost_[v0])/nbatches_))+indicesHost_[v0];
+                //printf("Bin Search for %ld between v0:%ld and v1:%ld\n",valForCut,indicesHost_[v0],indicesHost_[v1]);
+                GraphElem cut = binarySearchIdx(indicesHost_,v0,v1,valForCut);
+                //printf("GPU: %d, v0: %ld v1: %ld - cut at %ld\n",g,v0,v1,cut);
+                vertex_per_batch_[g][b+1] = cut;
+            }
         }
     }
 
@@ -700,13 +698,6 @@ double GraphGPU::run_pointer_chase()
 
                 }
             }
-            if(id==0){
-                bc1E = omp_get_wtime();
-                bc1T += bc1E - bc1S;
-            }
-            if(id==0){
-                sp2 = omp_get_wtime();
-            }
             flaghost_[0] = '0';
             CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),0);
             batchCount = 0;
@@ -717,13 +708,6 @@ double GraphGPU::run_pointer_chase()
                 //#pragma omp atomic
                 batchCount += 1;
             }
-            if(id==0){
-                ep2 = omp_get_wtime();
-                p2total += ep2 - sp2;
-            }
-            if(id==0){
-                bc2S = omp_get_wtime();
-            }
             if(NGPU!=1){
                 for(int i=0;i<NGPU;i++){
                     GraphElem offset = vertex_per_device_host_[i];
@@ -731,11 +715,6 @@ double GraphGPU::run_pointer_chase()
                     ncclBroadcast(mate_[id]+offset,mate_[id]+offset,count,ncclInt64,i,comm[id],0);
                 }
             }
-            if(id==0){
-                bc2E = omp_get_wtime();
-                bc2T += bc2E - bc2S;
-            }
-            #pragma omp barrier
             iter++;
             //printf("Iter %d\n",iter);
         }
@@ -744,17 +723,15 @@ double GraphGPU::run_pointer_chase()
             //printf("Number of Iterations: %d\n",iter);
         }
     }
-    printf("P1Time: %f\n",p1total);
-    printf("P2Time: %f\n",p2total);
-    printf("BC1Time: %f\n",bc1T);
-    printf("BC2Time: %f\n",bc2T);
-    printf("Batch Transfer: %f\n",batchTotal);
+    //printf("P1Time: %f\n",p1total);
+    //printf("P2Time: %f\n",p2total);
+    //printf("BC1Time: %f\n",bc1T);
+    //printf("BC2Time: %f\n",bc2T);
+    //printf("Batch Transfer: %f\n",batchTotal);
     CudaDeviceSynchronize();
-    gpuErrchk( cudaPeekAtLastError() );
     totalTime += end - start;
     return totalTime;
-    
-    //gpuErrchk( cudaDeviceSynchronize() );
+
 }
 
 /*

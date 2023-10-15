@@ -31,16 +31,17 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 int main(int argc, char** argv)
 {
 
-    if(argc!=3){
-        std::cout << argv[0] << " [binGraph] [numBatches]" << std::endl;
+    if(argc!=4){
+        std::cout << argv[0] << " [binGraph] [numBatches] [edgebalance/logical (1/0)]" << std::endl;
         return 1;
     }
     Graph* graph = nullptr;
     std::string inputFileName = argv[1];
     std::string batchNum = argv[2];
+    std::string edgebal = argv[3];
     graph = new Graph(inputFileName);
-
-    GraphGPU* graph_gpu = new GraphGPU(graph, stoi(batchNum), 1, 1);
+    std::cout << "Graph: " << inputFileName << " NGPU: " << NGPU << " Batches: " << batchNum << " EdgeBalance? " << edgebal << std::endl;  
+    GraphGPU* graph_gpu = new GraphGPU(graph, stoi(batchNum), 1, 1, stoi(edgebal));
     cudaDeviceSynchronize();
     
     printf("Starting Matching\n");
