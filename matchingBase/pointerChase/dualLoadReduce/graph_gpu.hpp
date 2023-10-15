@@ -31,14 +31,25 @@ class GraphGPU
 
     std::vector< std::vector<GraphElem> > vertex_per_batch_partition_[NGPU]; //divide batched vertex ranges (batched update) into maximum-edge partition
 
-    GraphElem   *edges_[NGPU];
-    GraphWeight *edgeWeights_[NGPU];
+    //GraphElem*   indices_[NGPU];
+    //GraphElem   *edges_[NGPU];
+    //GraphWeight *edgeWeights_[NGPU];
+
+    GraphElem*   indices1_[NGPU];
+    GraphElem   *edges1_[NGPU];
+    GraphWeight *edgeWeights1_[NGPU];
+
+    GraphElem*   indices2_[NGPU];
+    GraphElem   *edges2_[NGPU];
+    GraphWeight *edgeWeights2_[NGPU];
 
     GraphElem2 *commIdKeys_[NGPU];
     //GraphElem* indexOrders_[NGPU]; 
 
-    GraphElem*   indices_[NGPU];
+    
     GraphWeight* vertexWeights_[NGPU]; 
+
+
 
     GraphElem*  commIds_[NGPU];
     GraphElem** commIdsPtr_[NGPU];
@@ -50,11 +61,11 @@ class GraphGPU
 
     GraphElem* mate_host_[NGPU];
     GraphElem* mate_[NGPU];
-    GraphElem** matePtr_[NGPU];
+    //GraphElem** matePtr_[NGPU];
 
     GraphElem* partners_host_;
     GraphElem* partners_[NGPU];
-    GraphElem** partnersPtr_[NGPU];
+    //GraphElem** partnersPtr_[NGPU];
 
     char* finishFlag[NGPU];
 
@@ -73,7 +84,7 @@ class GraphGPU
 
     std::vector<GraphElem> vertex_partition_[NGPU];
 
-    cudaStream_t cuStreams[NGPU][4];
+    cudaStream_t cuStreams[NGPU][6];
 
     //related to sorting
     thrust::device_ptr<GraphWeight> ordered_weights_ptr[NGPU];
@@ -264,11 +275,13 @@ class GraphGPU
     GraphElem** get_indices_device();
     GraphElem* get_nv_device();
     void move_edges_to_device_UVA();
-    void run_pointer_chase();
-    void move_batch_to_GPU(int batch_id,int device_id);
+    double run_pointer_chase();
+    void move_batch_to_GPU(int batch_id,int device_id,int memsec);
     void move_batch_from_GPU(int batch_id);
     void set_P2P_Ptrs();
-    void output_matching();
+    double single_batch_p1(int id, int threadCount);
+    double multi_batch_p1_inc(int id, int threadCount);
+    double multi_batch_p1_dec(int id, int threadCount);
 
 };
 

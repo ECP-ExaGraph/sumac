@@ -1037,7 +1037,7 @@ void GraphGPU::run_pointer_chase()
                 //printf("%d - Moved Batch %d to GPU\n",id,batch_id);
                 run_pointer_chase_p1(indices_[id],edgeWeights_[id],edges_[id],mate_[id],matePtr_[id],partners_[id],partnersPtr_[id],
                 vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount);
-                printf("%d - Finished P1 Batch %d\n",id,batch_id);
+                //printf("%d - Finished P1 Batch %d\n",id,batch_id);
                 #pragma omp barrier
             }
             flaghost_[0] = '0';
@@ -1049,7 +1049,7 @@ void GraphGPU::run_pointer_chase()
                 //printf("%d - Moved Batch %d to GPU\n",id,batch_id);
                 run_pointer_chase_p2(indices_[id],edgeWeights_[id],edges_[id],mate_[id],matePtr_[id],partners_[id],partnersPtr_[id],
                 vertex_per_batch_device_[id],vertex_per_batch_[id],vertex_per_device_[id],finishFlag[id],id,batch_id,threadCount);
-                printf("%d - Finished P2 Batch %d\n",id,batch_id);
+                //printf("%d - Finished P2 Batch %d\n",id,batch_id);
                 #pragma omp barrier
                 CudaMemcpyUVA(flaghost_,finishFlag[id],sizeof(char));
                 if(flaghost_[0] == '1'){
@@ -1060,15 +1060,15 @@ void GraphGPU::run_pointer_chase()
             }
             iter++;
             
-            if(id == 0)
-                printf("Finished Iteration %d\n",iter);
+            //if(id == 0)
+            //    printf("Finished Iteration %d\n",iter);
             
         }
         //printf("%d - Done\n",id);
         //CudaMemcpyUVA(mate_host_[id],mate_[id],sizeof(GraphElem)*nv_[id]);
-        if(id == 0 ){
-            printf("Finished in %d Iterations\n",iter);
-        }
+        //if(id == 0 ){
+        //    printf("Finished in %d Iterations\n",iter);
+        //}
     }
     /*
     int totVerts = 0;
@@ -1169,6 +1169,13 @@ void GraphGPU::set_P2P_Ptrs(){
         CudaMemcpyUVA(partnersPtr_[i], partners_, sizeof(GraphElem*)*NGPU);
 
     }
+}
+
+
+void GraphGPU::output_matching(){
+   for(int i=0;i<NGPU;i++){
+    run_output_matching(vertex_per_device_[i],mate_[i],i);
+   }
 }
 
 #ifdef MULTIPHASE

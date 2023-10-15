@@ -2990,3 +2990,39 @@ void run_pointer_chase_p2
 }
 
 
+template<const int BlockSize>
+__global__
+void out_match_kernel
+(
+    GraphElem* vertex_per_device_,
+    GraphElem* mate_,
+    int device_id
+)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(tid == 0){
+        GraphElem size = vertex_per_device_[device_id+1] - vertex_per_device_[device_id];
+        for(int i=0;i<size;i++){
+            printf("%ld\n",mate_[i]);
+        }
+    }
+
+}
+
+
+
+void run_output_matching
+(
+    GraphElem* vertex_per_device_,
+    GraphElem* mate_,
+    int device_id
+)
+{
+    CudaLaunch((out_match_kernel<BLOCKDIM02><<<1,1>>>
+    (vertex_per_device_,mate_,device_id)));
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+}
+
+

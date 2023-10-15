@@ -408,5 +408,12 @@ void run_pointer_chase_p2
     int threadCount
 );
 
+void run_output_matching
+(
+    GraphElem* vertex_per_device_,
+    GraphElem* mate_,
+    int device_id
+);
+
 
 #endif

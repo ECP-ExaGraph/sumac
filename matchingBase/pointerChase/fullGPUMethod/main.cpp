@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     std::string inputFileName = argv[1];
     graph = new Graph(inputFileName);
 
-    GraphGPU* graph_gpu = new GraphGPU(graph, 4, 1, 1);
+    GraphGPU* graph_gpu = new GraphGPU(graph, 12, 1, 1);
     cudaDeviceSynchronize();
     
     printf("Starting Matching\n");
@@ -49,6 +49,7 @@ int main(int argc, char** argv)
 
     printf("Finished Matching\n");
     printf("Time Elapsed: %f seconds\n", end - start);
+    graph_gpu->output_matching();
 
     
     return 0;
