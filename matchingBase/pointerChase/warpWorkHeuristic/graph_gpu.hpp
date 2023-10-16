@@ -35,6 +35,10 @@ class GraphGPU
     GraphElem   *edges_[NGPU];
     GraphWeight *edgeWeights_[NGPU];
 
+    GraphElem* warpWork[NGPU];
+    GraphElem* warpWorkHost;
+
+
     GraphElem2 *commIdKeys_[NGPU];
     //GraphElem* indexOrders_[NGPU]; 
 

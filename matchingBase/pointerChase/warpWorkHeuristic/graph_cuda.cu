@@ -2982,7 +2982,7 @@ void run_pointer_chase_p1
     //printf("Starting P1 with Device %d and Batch %d with VPW: %d\n",device_id,batch_id,vertsPerWarp);
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[0]>>>
+    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[2]>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
     //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
     //(indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
@@ -3100,6 +3100,9 @@ void set_mate_kernel_work
         
         GraphElem adj1 = indices_[currVertIdx];
         GraphElem adj2 = indices_[currVertIdx+1];
+        if(lane_id == 0){
+            warpWork[g_warp_id] += adj2-adj1;
+        }
     
 
         for(int j=(adj1-indices_[0])+lane_id;j<(adj2-indices_[0]);j+=WARPSIZE){ //Find heaviest edge among neighbors

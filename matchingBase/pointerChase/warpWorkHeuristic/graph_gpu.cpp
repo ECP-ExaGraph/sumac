@@ -36,7 +36,21 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     edgeWeightsHost_ = graph_->get_edge_weights();
     edgesHost_       = graph_->get_edges();
 
+    
+    /*if(edgebal){
+        degree_based_edge_device_partition();
+    }  
+    else{
+        logical_partition_devices();
+        //determine_edge_device_partition();
+        for(int i=0;i<NGPU;i++){
+            printf("GPU %d: %ld - %ld\n",i,vertex_per_device_host_[i],vertex_per_device_host_[i+1]);
+        }
+    }*/
     degree_based_edge_device_partition();
+
+
+    
     omp_set_num_threads(NGPU);
     #pragma omp parallel
     {
@@ -69,6 +83,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     else{
         //printf("Logical Batching\n");
         logical_partition_batches();
+        //partition_graph_edge_batch();
         /*
         for(int g=0;g<NGPU;g++){
         printf("GPU VERT RANGES\n");
@@ -85,7 +100,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
 
         GraphElem nv = nv_[id];
         GraphElem ne = ne_[id];
-        //printf("Device %d with NV: %ld NE: %ld\n",id,nv,ne);
+        printf("Device %d with NV: %ld NE: %ld\n",id,nv,ne);
 
         GraphElem maxnv = -1;
         GraphElem maxne = -1;
@@ -101,8 +116,14 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     maxne++;
     maxnv++;
 
-    //printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
+    printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
     CudaMallocHost(indices_[id],       sizeof(GraphElem)   * (maxnv+1));
+    long long numWarps = MAX_GRIDDIM*(BLOCKDIM02/WARPSIZE);
+    //warpWorkHost = new GraphElem[numWarps];
+    //printf("Alloc Managed\n");
+    cudaMallocManaged(&warpWork[id],sizeof(GraphElem)*numWarps);
+    //printf("Done Alloc\n");
+    CudaMemset(warpWork[id],0,sizeof(GraphElem)*numWarps);
     //CudaMalloc(vertexWeights_[id], sizeof(GraphWeight) * maxnv);
 
     CudaMalloc(mate_[id], sizeof(GraphElem) * NV_);
@@ -197,7 +218,6 @@ GraphGPU::~GraphGPU()
     free(sortedVertexIdsHost_);
     #endif    
 }
-
 
 void GraphGPU::determine_edge_device_partition()
 {
@@ -311,10 +331,9 @@ void GraphGPU::degree_based_edge_device_partition(){
         nv_[i] = vertex_per_device_host_[i+1]-vertex_per_device_host_[i];
         ne_[i] = indicesHost_[vertex_per_device_host_[i+1]] - indicesHost_[vertex_per_device_host_[i]];
     }
-    /*
     for(int i=0;i<NGPU;i++){
         printf("GPU %d: %ld - %ld\n",i,vertex_per_device_host_[i],vertex_per_device_host_[i+1]);
-    }*/
+    }
 
 }
 
@@ -362,7 +381,7 @@ void GraphGPU::logical_partition_batches(){
     for(int g=0;g<NGPU;g++){ 
         GraphElem v0 = vertex_per_device_host_[g];
         GraphElem v1 = vertex_per_device_host_[g+1];
-        //printf("Starting GPU %d: v0: %ld v1: %ld\n",g,v0,v1);
+        printf("Starting GPU %d: v0: %ld v1: %ld\n",g,v0,v1);
         vertex_per_batch_[g][0] = v0;
         vertex_per_batch_[g][nbatches_] = v1;
         for(int b=1;b<nbatches_;b++){
@@ -725,6 +744,11 @@ double GraphGPU::run_pointer_chase()
         char* flaghost_ = new char[1];
         flaghost_[0] = '1';
         
+        long long numWarps = MAX_GRIDDIM*(BLOCKDIM02/WARPSIZE);
+
+
+
+
         this->move_batch_to_GPU(0,id);
         start = omp_get_wtime();
         while(batchCount != 0){
@@ -734,8 +758,8 @@ double GraphGPU::run_pointer_chase()
                 if(id == 0){
                     sp1 = omp_get_wtime();
                 }
-                 run_pointer_chase_p1(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
-                    vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,cuStreams[id]);
+                 run_pointer_chase_p1_work(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
+                    vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,cuStreams[id],warpWork[id]);
                 if(id == 0){
                     p1total += omp_get_wtime() - sp1;
                 }
@@ -746,8 +770,8 @@ double GraphGPU::run_pointer_chase()
                     if(id == 0){
                         sp1 = omp_get_wtime();
                     }
-                    run_pointer_chase_p1(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
-                        vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,cuStreams[id]);
+                    run_pointer_chase_p1_work(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
+                        vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,cuStreams[id],warpWork[id]);
                     if(id == 0){
                         p1total += omp_get_wtime() - sp1;
                     }
@@ -762,8 +786,8 @@ double GraphGPU::run_pointer_chase()
                             batchTotal += omp_get_wtime() - batchS;
                             sp1 = omp_get_wtime();
                         }
-                        run_pointer_chase_p1(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
-                            vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id]);
+                        run_pointer_chase_p1_work(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
+                            vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id],warpWork[id]);
                         if(id == 0){
                             p1total += omp_get_wtime() - sp1;
                         }
@@ -776,8 +800,8 @@ double GraphGPU::run_pointer_chase()
                         sp1 = omp_get_wtime();
                     }
 
-                    run_pointer_chase_p1(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
-                        vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id]);
+                    run_pointer_chase_p1_work(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
+                        vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id],warpWork[id]);
 
                     if(id == 0){
                         p1total += omp_get_wtime() - sp1;
@@ -794,8 +818,8 @@ double GraphGPU::run_pointer_chase()
                             sp1 = omp_get_wtime();
                         }
 
-                        run_pointer_chase_p1(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
-                            vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id]);
+                        run_pointer_chase_p1_work(indices_[id],edgeWeights_[id],edges_[id],mate_[id],partners_[id],
+                            vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id],warpWork[id]);
 
                         if(id == 0){
                             p1total += omp_get_wtime() - sp1;
@@ -852,6 +876,16 @@ double GraphGPU::run_pointer_chase()
             end = omp_get_wtime();
             //printf("Number of Iterations: %d\n",iter);
             
+        }
+        CudaDeviceSynchronize();
+        printf("WarpWork\n");
+        for(int i=0;i<NGPU;i++){
+            std::cout << "GPU " << i << std::endl;
+            //printf("GPU %d\n",i);
+            for(GraphElem j=0;j<numWarps;j++){
+                std::cout << j << "," << warpWork[i][j] << std::endl;
+                //printf("%ld,%ld\n",j,warpWork[i][j]);
+            }
         }
     }
     printf("P1Time: %f\n",p1total);
