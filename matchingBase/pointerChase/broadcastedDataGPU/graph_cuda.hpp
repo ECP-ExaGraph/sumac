@@ -397,7 +397,8 @@ void run_pointer_chase_p2
     GraphElem* vertex_per_device_host_,
     char* finishFlag,
     int device_id,
-    int threadCount
+    int threadCount,
+    cudaStream_t* streams
 );
 void run_pointer_chase_p1_thread
 (

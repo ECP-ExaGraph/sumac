@@ -2892,7 +2892,7 @@ void set_mate_kernel
                 heaviest = weight;
             }
         }
-        __syncwarp();
+
         for (int t=WARPSIZE/2; t>=1; t/=2) {
             GraphWeight reducedWeight = __shfl_xor_sync(0xFFFFFFFF, heaviest, t, WARPSIZE);
             GraphElem reducedPartner = __shfl_xor_sync(0xFFFFFFFF, heaviestPartner, t, WARPSIZE);
@@ -2982,9 +2982,10 @@ void run_pointer_chase_p1
     //printf("Starting P1 with Device %d and Batch %d with VPW: %d\n",device_id,batch_id,vertsPerWarp);
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
-    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[2]>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
+    //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    //(indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
     
     //printf("Finished P1 with Device %d and Batch %d\n",device_id,batch_id);
     CudaDeviceSynchronize();
@@ -3032,7 +3033,8 @@ void run_pointer_chase_p2
     GraphElem* vertex_per_device_host_,
     char* finishFlag,
     int device_id,
-    int threadCount
+    int threadCount,
+    cudaStream_t* streams
 )
 {
 
@@ -3041,11 +3043,11 @@ void run_pointer_chase_p2
     int vertsPerThread = ((vertex_per_device_host_[device_id+1] - vertex_per_device_host_[device_id])/(threadCount*nblocks))+1;
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[0]>>>
     (vertex_per_device_,partners_,mate_,device_id,vertsPerThread,finishFlag)));
-    gpuErrchk( cudaPeekAtLastError() );
+    //gpuErrchk( cudaPeekAtLastError() );
     //gpuErrchk( cudaDeviceSynchronize() );
-    CudaDeviceSynchronize();
+    //CudaDeviceSynchronize();
     
 }
 
