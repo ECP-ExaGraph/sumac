@@ -43,6 +43,7 @@ int main(int argc, char** argv)
     std::cout << "Graph: " << inputFileName << " NGPU: " << NGPU << " Batches: " << batchNum << " EdgeBalance? " << edgebal << std::endl;  
     GraphGPU* graph_gpu = new GraphGPU(graph, stoi(batchNum), 1, 1, stoi(edgebal));
     cudaDeviceSynchronize();
+    gpuErrchk( cudaPeekAtLastError() );
     
     printf("Starting Matching\n");
     double total;

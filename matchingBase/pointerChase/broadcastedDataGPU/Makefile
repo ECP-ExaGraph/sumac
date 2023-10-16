@@ -2,20 +2,20 @@ NVCC:=nvcc
 CC:=g++
 
 SM=70
-NGPU=4
+NGPU=2
 graph_ft_load=0
 check=0
 debug=0
 #NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.18.3-1_cuda-12.0_gcc-9.4.0
-NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.17.1-1_gcc-9.4.0-1ubuntu1-20.04/lib
-#NCCL_PATH=/usr/lib/x86_64-linux-gnu/
+#NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.17.1-1_gcc-9.4.0-1ubuntu1-20.04/lib
+NCCL_PATH=/usr/lib/x86_64-linux-gnu/
 ifeq ($(debug), 1)
 	CUFLAGS = -g -G -Ddebug --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
                   -Xcompiler -fopenmp -DMULTIPHASE -DNGPU=${NGPU} -DPRINT
 	CFLAGS = -g -Ddebug -std=c++14 -Wextra -Wall -DMULTIPHASE -DNGPU=1 -DPRINT
 else 
 	CUFLAGS = -O3 -Xptxas -O3 --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
-                  -Xcompiler -O3 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
+                  -Xcompiler -O3 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU} -lineinfo
 	CFLAGS = -O3 -std=c++14 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
 	LDFLAGS = -L/usr/lib/cuda -L${NCCL_PATH} -lnccl -lcudart -lcuda
 endif

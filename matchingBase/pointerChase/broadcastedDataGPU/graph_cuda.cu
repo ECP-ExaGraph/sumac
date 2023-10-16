@@ -2873,12 +2873,11 @@ void set_mate_kernel
             }
         }
         
-
+        
         
         GraphElem adj1 = indices_[currVertIdx];
         GraphElem adj2 = indices_[currVertIdx+1];
-
-
+    
 
         for(int j=(adj1-indices_[0])+lane_id;j<(adj2-indices_[0]);j+=WARPSIZE){ //Find heaviest edge among neighbors
             GraphElem edge = edgeList_[j];
@@ -2908,7 +2907,6 @@ void set_mate_kernel
             }
         }
         partners_[currVert] = heaviestPartner;
-        
     }
 
 }
@@ -2981,15 +2979,16 @@ void run_pointer_chase_p1
     //nblocks = (nblocks > MAX_GRIDDIM) ? MAX_GRIDDIM : nblocks;
     long long nblocks = MAX_GRIDDIM;
     int vertsPerWarp = ((vertex_per_batch_[batch_id+1] - vertex_per_batch_[batch_id])/(MAX_GRIDDIM*(threadCount/WARPSIZE)))+1;
-    //printf("VertsPerWarp P1: %d\n",vertsPerWarp);
+    //printf("Starting P1 with Device %d and Batch %d with VPW: %d\n",device_id,batch_id,vertsPerWarp);
     CudaSetDevice(device_id);
     //Run Mate Kernel
     //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
-    gpuErrchk( cudaPeekAtLastError() );
-    //gpuErrchk( cudaDeviceSynchronize() );
+    
+    //printf("Finished P1 with Device %d and Batch %d\n",device_id,batch_id);
     CudaDeviceSynchronize();
+    //gpuErrchk( cudaPeekAtLastError() );
     
 }
 
@@ -3044,9 +3043,9 @@ void run_pointer_chase_p2
     //Run Mate Kernel
     CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
     (vertex_per_device_,partners_,mate_,device_id,vertsPerThread,finishFlag)));
-    //gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaPeekAtLastError() );
     //gpuErrchk( cudaDeviceSynchronize() );
-    //CudaDeviceSynchronize();
+    CudaDeviceSynchronize();
     
 }
 
