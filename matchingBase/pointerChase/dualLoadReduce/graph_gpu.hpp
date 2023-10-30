@@ -35,13 +35,9 @@ class GraphGPU
     //GraphElem   *edges_[NGPU];
     //GraphWeight *edgeWeights_[NGPU];
 
-    GraphElem*   indices1_[NGPU];
-    GraphElem   *edges1_[NGPU];
-    GraphWeight *edgeWeights1_[NGPU];
-
-    GraphElem*   indices2_[NGPU];
-    GraphElem   *edges2_[NGPU];
-    GraphWeight *edgeWeights2_[NGPU];
+    GraphElem   **indices_[NGPU];
+    GraphElem   **edges_[NGPU];
+    GraphWeight **edgeWeights_[NGPU];
 
     GraphElem2 *commIdKeys_[NGPU];
     //GraphElem* indexOrders_[NGPU]; 
@@ -282,6 +278,7 @@ class GraphGPU
     double single_batch_p1(int id, int threadCount);
     double multi_batch_p1_inc(int id, int threadCount);
     double multi_batch_p1_dec(int id, int threadCount);
+    void move_batches_to_GPU_init();
 
 };
 
