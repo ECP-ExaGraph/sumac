@@ -27,7 +27,7 @@ GraphGPU::GraphGPU(Graph* graph, const int& nbatches, const int& part_on_device,
 graph_(graph), nbatches_(nbatches), part_on_device_(part_on_device), part_on_batch_(part_on_batch), 
 NV_(0), NE_(0), maxOrder_(0), mass_(0)
 {
-    //printf("Starting GraphGPU\n");
+    printf("Starting GraphGPU\n");
     NV_ = graph_->get_num_vertices();
     NE_ = graph_->get_num_edges();
 
@@ -61,7 +61,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     }
 
 
-
+    printf("Starting Partition\n");
     if(edgebal==1){
         //printf("Balancing Edges in Batches\n");
         degree_based_edge_batch_partition();
@@ -77,6 +77,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
             }
         }*/
     }
+    printf("Finished Partition\n");
     CudaDeviceSynchronize();
      #pragma omp parallel
     {
@@ -101,8 +102,8 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     maxne++;
     maxnv++;
 
-    //printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
-    CudaMallocHost(indices_[id],       sizeof(GraphElem)   * (maxnv+1));
+    printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
+    CudaMalloc(indices_[id],       sizeof(GraphElem)   * (maxnv+1));
     //CudaMalloc(vertexWeights_[id], sizeof(GraphWeight) * maxnv);
 
     CudaMalloc(mate_[id], sizeof(GraphElem) * NV_);
@@ -117,10 +118,10 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     //CudaMemset(ws_[id],-1.0,sizeof(GraphWeight) * maxnv);
 
 
-    CudaMallocHost(vertex_per_device_[id], sizeof(GraphElem)*(NGPU+1));
-    CudaMallocHost(finishFlag[id], sizeof(char));
+    CudaMalloc(vertex_per_device_[id], sizeof(GraphElem)*(NGPU+1));
+    CudaMalloc(finishFlag[id], sizeof(char));
 
-    CudaMallocHost(vertex_per_batch_device_[id], sizeof(GraphElem) * (nbatches+1));
+    CudaMalloc(vertex_per_batch_device_[id], sizeof(GraphElem) * (nbatches+1));
     CudaMemcpyUVA(vertex_per_batch_device_[id], vertex_per_batch_[id], sizeof(GraphElem) * (nbatches+1));
     //CudaMemcpyAsyncHtoD(indices_[id], indicesHost_+v_base_[id], sizeof(GraphElem)*(maxnv+1), 0);
     CudaMemcpyUVA(vertex_per_device_[id], vertex_per_device_host_, sizeof(GraphElem)*(NGPU+1));
@@ -130,13 +131,13 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     //GraphElem ne_per_partition = ne_per_partition_[id];
     //determine_optimal_vertex_partition(indicesHost_, nv, ne, ne_per_partition, vertex_partition_[id], v_base_[id]);
 
-    CudaMallocHost(edges_[id],          sizeof(GraphElem)*(maxne+1));
-    CudaMallocHost(edgeWeights_[id],    sizeof(GraphWeight)*(maxne+1));
+    CudaMalloc(edges_[id],          sizeof(GraphElem)*(maxne+1));
+    CudaMalloc(edgeWeights_[id],    sizeof(GraphWeight)*(maxne+1));
 
 
     CudaCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
-
+    printf("DONE GPUGRAPH\n");
     CudaDeviceSynchronize();
     gpuErrchk( cudaPeekAtLastError() );
     }
@@ -843,7 +844,7 @@ double GraphGPU::run_pointer_chase()
             if(id == 0){
                 bc2T += omp_get_wtime() - bc2S;
             }
-            //#pragma omp barrier
+            #pragma omp barrier
             iter++;
             //printf("Iter %d\n",iter);
             

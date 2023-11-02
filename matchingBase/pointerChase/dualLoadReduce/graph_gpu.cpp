@@ -855,7 +855,7 @@ double GraphGPU::run_pointer_chase()
             #pragma omp barrier
             iter++;
             cudaDeviceSynchronize();
-            printf("Iter %d\n",iter);
+            //printf("Iter %d\n",iter);
             
         }
         if(id == 0){
