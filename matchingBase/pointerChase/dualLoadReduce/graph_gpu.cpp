@@ -23,10 +23,11 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 	}
 }
 
-GraphGPU::GraphGPU(Graph* graph, const int& nbatches, const int& part_on_device, const int& part_on_batch) : 
+GraphGPU::GraphGPU(Graph* graph, const int& nbatches, const int& part_on_device, const int& part_on_batch, const int& edgebal) : 
 graph_(graph), nbatches_(nbatches), part_on_device_(part_on_device), part_on_batch_(part_on_batch), 
 NV_(0), NE_(0), maxOrder_(0), mass_(0)
 {
+    printf("Starting GraphGPU\n");
     NV_ = graph_->get_num_vertices();
     NE_ = graph_->get_num_edges();
 
@@ -35,15 +36,26 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     edgeWeightsHost_ = graph_->get_edge_weights();
     edgesHost_       = graph_->get_edges();
 
+    
+    /*if(edgebal){
+        degree_based_edge_device_partition();
+    }  
+    else{
+        logical_partition_devices();
+        //determine_edge_device_partition();
+        for(int i=0;i<NGPU;i++){
+            printf("GPU %d: %ld - %ld\n",i,vertex_per_device_host_[i],vertex_per_device_host_[i+1]);
+        }
+    }*/
+    degree_based_edge_device_partition();
 
-    determine_edge_device_partition();
 
+    
     omp_set_num_threads(NGPU);
     #pragma omp parallel
     {
         int id =  omp_get_thread_num() % NGPU;   
         CudaSetDevice(id);
-        cudaSetDeviceFlags(cudaDeviceMapHost);
 
         for(unsigned i = 0; i < 6; ++i)
             CudaCall(cudaStreamCreate(&cuStreams[id][i]));
@@ -59,22 +71,31 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
         vertex_per_batch_[id] = new GraphElem [nbatches+1];
         vertex_per_batch_partition_[id].resize(nbatches);
 
-        //CudaDeviceSynchronize();
+        CudaDeviceSynchronize();
     }
 
 
-    #ifdef MULTIPHASE
-    buffer_ = malloc(unit_size*NE_);
-    commIdsHost_ = new GraphElem [NV_];
-    vertexIdsHost_ = new GraphElem [NV_];
-    vertexIdsOffsetHost_ = new GraphElem [NV_];
-    sortedVertexIdsHost_ = (GraphElem2*)malloc(sizeof(GraphElem2)*(NV_+1));
+    printf("Starting Partition\n");
+    if(edgebal==1){
+        //printf("Balancing Edges in Batches\n");
+        degree_based_edge_batch_partition();
+    }
+    else{
+        //printf("Logical Batching\n");
+        logical_partition_batches();
+        //partition_graph_edge_batch();
+        /*
+        for(int g=0;g<NGPU;g++){
+        printf("GPU VERT RANGES\n");
+            for(int i=0;i<nbatches_;i++){
+                printf("%ld - %ld : %ld - %ld\n",vertex_per_batch_[g][i],vertex_per_batch_[g][i+1],indicesHost_[vertex_per_batch_[g][i]],indicesHost_[vertex_per_batch_[g][i+1]]);
+            }
+        }*/
+    }
+    CudaDeviceSynchronize();
+    printf("Finished Partitioning\n");
 
-    clusters_ = new Clustering(NV_);
-    #endif
 
-
-    partition_graph_edge_batch();
      #pragma omp parallel
     {
         int id =  omp_get_thread_num() % NGPU;   
@@ -125,9 +146,9 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     CudaMemcpyUVA(vertex_per_device_[id], vertex_per_device_host_, sizeof(GraphElem)*(NGPU+1));
 
 
-    ne_per_partition_[id] = determine_optimal_edges_per_partition(nv, ne, unit_size);
-    GraphElem ne_per_partition = ne_per_partition_[id];
-    determine_optimal_vertex_partition(indicesHost_, nv, ne, ne_per_partition, vertex_partition_[id], v_base_[id]);
+    //ne_per_partition_[id] = determine_optimal_edges_per_partition(nv, ne, unit_size);
+    //GraphElem ne_per_partition = ne_per_partition_[id];
+    //determine_optimal_vertex_partition(indicesHost_, nv, ne, ne_per_partition, vertex_partition_[id], v_base_[id]);
 
     /*for(int i=0;i<nbatches_;i++){
         cudaHostAlloc(&edges_[id],          sizeof(GraphElem)*(NGPU), cudaHostAllocMapped);
@@ -142,7 +163,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
         //cudaMallocManaged((void**)&edgeWeights_[id][j], (maxne+1) * sizeof(GraphWeight));
     }
 
-
+    printf("DONE ALLOC GPUGRAPH\n");
 
     CudaCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
@@ -345,6 +366,127 @@ void GraphGPU::partition_graph_edge_batch()
         }    
     }
 }
+
+GraphElem GraphGPU::binarySearchIdx(GraphElem arr[], GraphElem l, GraphElem r, GraphElem val) {
+    GraphElem low = l, high = r - 1;
+    GraphElem closestIdx = -1;
+
+    #pragma omp parallel
+    {
+        int thread_id = omp_get_thread_num();
+        int num_threads = omp_get_num_threads();
+
+        GraphElem local_low = low + thread_id * (high - low + 1) / num_threads;
+        GraphElem local_high = low + (thread_id + 1) * (high - low + 1) / num_threads - 1;
+
+        while (local_low <= local_high) {
+            GraphElem mid = local_low + (local_high - local_low) / 2;
+
+            if (arr[mid] == val) {
+                #pragma omp critical
+                closestIdx = mid; // Return the index of the exact match
+                break;
+            } else if (arr[mid] < val) {
+                local_low = mid + 1;
+            } else {
+                local_high = mid - 1;
+            }
+
+            // Update the closest index
+            #pragma omp critical
+            if (closestIdx == -1 || abs(arr[mid] - val) < abs(arr[closestIdx] - val)) {
+                closestIdx = mid;
+            }
+        }
+    }
+
+    return closestIdx;
+}
+
+void GraphGPU::degree_based_edge_device_partition(){
+
+
+    vertex_per_device_host_[0] = 0;
+    vertex_per_device_host_[NGPU] = NV_;
+    GraphElem v0 = 0;
+    GraphElem v1 = NV_;
+    for(int i=1;i<NGPU;i++){
+        GraphElem valForCut = (i*((indicesHost_[v1]-indicesHost_[v0])/NGPU))+indicesHost_[v0];
+            //printf("Bin Search for %ld between v0:%ld and v1:%ld\n",valForCut,indicesHost_[v0],indicesHost_[v1]);
+        GraphElem cut = binarySearchIdx(indicesHost_,v0,v1,valForCut);
+            //printf("GPU: %d, v0: %ld v1: %ld - cut at %ld\n",g,v0,v1,cut);
+        vertex_per_device_host_[i] = cut;
+    }
+    for(int i=0;i<NGPU;i++){
+        nv_[i] = vertex_per_device_host_[i+1]-vertex_per_device_host_[i];
+        ne_[i] = indicesHost_[vertex_per_device_host_[i+1]] - indicesHost_[vertex_per_device_host_[i]];
+    }
+    for(int i=0;i<NGPU;i++){
+        printf("GPU %d: %ld - %ld\n",i,vertex_per_device_host_[i],vertex_per_device_host_[i+1]);
+    }
+
+}
+
+
+void GraphGPU::degree_based_edge_batch_partition(){
+    //Filled out: vertex_per_device_host_[]
+    //Need to fill out: vertex_per_batch_[g][i]
+    
+    for(int g=0;g<NGPU;g++){
+        
+        GraphElem v0 = vertex_per_device_host_[g];
+        GraphElem v1 = vertex_per_device_host_[g+1];
+        //printf("Starting GPU %d: v0: %ld v1: %ld\n",g,v0,v1);
+        vertex_per_batch_[g][0] = v0;
+        vertex_per_batch_[g][nbatches_] = v1;
+        for(int b=1;b<nbatches_;b++){
+            GraphElem valForCut = (b*((indicesHost_[v1]-indicesHost_[v0])/nbatches_))+indicesHost_[v0];
+            //printf("Bin Search for %ld between v0:%ld and v1:%ld\n",valForCut,indicesHost_[v0],indicesHost_[v1]);
+            GraphElem cut = binarySearchIdx(indicesHost_,v0,v1,valForCut);
+            //printf("GPU: %d, v0: %ld v1: %ld - cut at %ld\n",g,v0,v1,cut);
+            vertex_per_batch_[g][b] = cut;
+        }
+        /*
+        printf("GPU VERT RANGES\n");
+        for(int i=0;i<nbatches_;i++){
+            printf("%ld - %ld : %ld - %ld\n",vertex_per_batch_[g][i],vertex_per_batch_[g][i+1],indicesHost_[vertex_per_batch_[g][i]],indicesHost_[vertex_per_batch_[g][i+1]]);
+        }*/
+    }
+
+
+}
+
+void GraphGPU::logical_partition_devices(){
+    vertex_per_device_host_[0] = 0;
+    vertex_per_device_host_[NGPU] = NV_;
+    for(int i=1;i<NGPU;i++){
+        vertex_per_device_host_[i] = i*(NV_/NGPU);
+    }
+    for(int i=0;i<NGPU;i++){
+        nv_[i] = vertex_per_device_host_[i+1]-vertex_per_device_host_[i];
+        ne_[i] = indicesHost_[vertex_per_device_host_[i+1]] - indicesHost_[vertex_per_device_host_[i]];
+    }
+}
+void GraphGPU::logical_partition_batches(){
+    for(int g=0;g<NGPU;g++){ 
+        GraphElem v0 = vertex_per_device_host_[g];
+        GraphElem v1 = vertex_per_device_host_[g+1];
+        printf("Starting GPU %d: v0: %ld v1: %ld\n",g,v0,v1);
+        vertex_per_batch_[g][0] = v0;
+        vertex_per_batch_[g][nbatches_] = v1;
+        for(int b=1;b<nbatches_;b++){
+            vertex_per_batch_[g][b] = (b*((v1-v0)/nbatches_))+v0;
+        }
+        /*
+        printf("GPU VERT RANGES\n");
+        for(int i=0;i<nbatches_;i++){
+            printf("%ld - %ld : %ld - %ld\n",vertex_per_batch_[g][i],vertex_per_batch_[g][i+1],indicesHost_[vertex_per_batch_[g][i]],indicesHost_[vertex_per_batch_[g][i+1]]);
+        }*/
+    }
+}
+
+
+
 
 //TODO: in the future, this could be moved to a new class
 GraphElem GraphGPU::determine_optimal_edges_per_partition
@@ -630,6 +772,7 @@ double GraphGPU::run_pointer_chase()
                     vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,cuStreams[id]);
             }
             else{
+                //printf("Phase 1\n");
                 this->move_batch_to_GPU(0,id,0);
                 for(int batch_id=0;batch_id<nbatches_-1;batch_id++){
                     if(id==0){
@@ -646,13 +789,16 @@ double GraphGPU::run_pointer_chase()
                         memsec = 1;
                     run_pointer_chase_p1(indices_[id][memsec],edgeWeights_[id][memsec],edges_[id][memsec],mate_[id],partners_[id],
                     vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id]);
+                    
                 }
+                
                 if(memsec == 1)
                     memsec = 0;
                 else
                     memsec = 1;
                 run_pointer_chase_p1(indices_[id][memsec],edgeWeights_[id][memsec],edges_[id][memsec],mate_[id],partners_[id],
                     vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id]);
+                //printf("Phase 1 End\n");
             }
             if(id==0){
                 bc1S = omp_get_wtime();
@@ -677,7 +823,9 @@ double GraphGPU::run_pointer_chase()
             flaghost_[0] = '0';
             CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
             batchCount = 0;
+            //printf("Phase 2\n");
             run_pointer_chase_p2(mate_[id],partners_[id],vertex_per_device_[id],vertex_per_device_host_,finishFlag[id],id,threadCount);
+            //printf("Phase 2 End\n");
             //gpuErrchk( cudaPeekAtLastError() );
             //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),0);
             CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
@@ -704,22 +852,28 @@ double GraphGPU::run_pointer_chase()
                 bc2T += bc2E - bc2S;
             }
             //gpuErrchk( cudaPeekAtLastError() );
-            //#pragma omp barrier
+            #pragma omp barrier
             iter++;
-            //cudaDeviceSynchronize();
+            cudaDeviceSynchronize();
             //printf("Iter %d\n",iter);
             
         }
         if(id == 0){
             end = omp_get_wtime();
             printf("Number of Iterations: %d\n",iter);
+            printf("P1Time: %f\n",p1total);
+            printf("P2Time: %f\n",p2total);
+            printf("BC1Time: %f\n",bc1T);
+            printf("BC2Time: %f\n",bc2T);
+            printf("Batch Transfer: %f\n",batchTotal);
+            printf("Total Time: %f\n",end-start);
         }
     }
-    printf("P1Time: %f\n",p1total);
-    printf("P2Time: %f\n",p2total);
-    printf("BC1Time: %f\n",bc1T);
-    printf("BC2Time: %f\n",bc2T);
-    printf("Batch Transfer: %f\n",batchTotal);
+    //printf("P1Time: %f\n",p1total);
+    //printf("P2Time: %f\n",p2total);
+    //printf("BC1Time: %f\n",bc1T);
+    //printf("BC2Time: %f\n",bc2T);
+    //printf("Batch Transfer: %f\n",batchTotal);
     CudaDeviceSynchronize();
     gpuErrchk( cudaPeekAtLastError() );
     totalTime += end - start;
