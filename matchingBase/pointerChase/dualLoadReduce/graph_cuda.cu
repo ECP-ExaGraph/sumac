@@ -2983,9 +2983,7 @@ void run_pointer_chase_p1
     //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
-    gpuErrchk( cudaPeekAtLastError() );
-    //gpuErrchk( cudaDeviceSynchronize() );
-    CudaDeviceSynchronize();
+    gpuErrchk( cudaDeviceSynchronize() );
     
 }
 
@@ -3015,7 +3013,7 @@ void run_pointer_chase_p1_thread
     CudaLaunch((set_mate_kernel_thread<BLOCKDIM02><<<nblocks,threadCount>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerThread)));
     //gpuErrchk( cudaPeekAtLastError() );
-    //gpuErrchk( cudaDeviceSynchronize() );
+    gpuErrchk( cudaDeviceSynchronize() );
     //CudaDeviceSynchronize();
     
 }
@@ -3040,8 +3038,6 @@ void run_pointer_chase_p2
     //Run Mate Kernel
     CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
     (vertex_per_device_,partners_,mate_,device_id,vertsPerThread,finishFlag)));
-    gpuErrchk( cudaPeekAtLastError() );
-    gpuErrchk( cudaDeviceSynchronize() );
     //CudaDeviceSynchronize();
     
 }

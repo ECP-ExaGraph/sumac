@@ -37,17 +37,17 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     edgesHost_       = graph_->get_edges();
 
     
-    /*if(edgebal){
+    if(edgebal){
         degree_based_edge_device_partition();
     }  
     else{
         logical_partition_devices();
         //determine_edge_device_partition();
-        for(int i=0;i<NGPU;i++){
-            printf("GPU %d: %ld - %ld\n",i,vertex_per_device_host_[i],vertex_per_device_host_[i+1]);
-        }
-    }*/
-    degree_based_edge_device_partition();
+        //for(int i=0;i<NGPU;i++){
+        //    printf("GPU %d: %ld - %ld\n",i,vertex_per_device_host_[i],vertex_per_device_host_[i+1]);
+        //}
+    }
+    //degree_based_edge_device_partition();
 
 
     
@@ -126,7 +126,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     CudaMemset(warpWork[id],0,sizeof(GraphElem)*numWarps);
     //CudaMalloc(vertexWeights_[id], sizeof(GraphWeight) * maxnv);
 
-    CudaMalloc(mate_[id], sizeof(GraphElem) * NV_);
+    cudaMallocManaged(&mate_[id], sizeof(GraphElem) * NV_);
     //CudaMalloc(matePtr_[id], sizeof(GraphElem*) * NGPU);
     CudaMalloc(partners_[id], sizeof(GraphElem) * NV_);
     //CudaMalloc(partnersPtr_[id], sizeof(GraphElem*) * NGPU);
@@ -692,6 +692,22 @@ double GraphGPU::multi_batch_p1_dec(int id, int threadCount){
 
 
 
+double GraphGPU::count_num_verts_matched(int id,int iter){
+    if(iter == 0){
+        printf("Num Verts Matched: %ld on iter: %d, Fraction: %f\n",0,0,0.0);
+    }
+    GraphElem total = 0;
+    #pragma omp parallel for num_threads(omp_get_max_threads())
+    for (GraphElem i = 0; i < NV_; i++) {
+        if (mate_[id][i] >= 0) {
+            #pragma omp atomic
+            total++;
+        }
+    }
+    printf("Num Verts Matched: %ld on iter: %d, Fraction: %f\n",total,iter+1,((float)total)/NV_);
+    return total;
+}
+
 
 
 double GraphGPU::run_pointer_chase()
@@ -724,6 +740,7 @@ double GraphGPU::run_pointer_chase()
     double totalTime = 0;
     double start;
     double end;
+    long long numWarps = MAX_GRIDDIM*(BLOCKDIM02/WARPSIZE);
     #pragma omp parallel
     {
         int id = omp_get_thread_num() % NGPU; 
@@ -744,14 +761,14 @@ double GraphGPU::run_pointer_chase()
         char* flaghost_ = new char[1];
         flaghost_[0] = '1';
         
-        long long numWarps = MAX_GRIDDIM*(BLOCKDIM02/WARPSIZE);
+        
 
 
 
 
         this->move_batch_to_GPU(0,id);
         start = omp_get_wtime();
-        while(batchCount != 0){
+        while(batchCount != 0 && iter < 10){
             
             if(nbatches_==1){
                 //this->single_batch_p1(id,threadCount);
@@ -866,9 +883,11 @@ double GraphGPU::run_pointer_chase()
             }
             if(id == 0){
                 bc2T += omp_get_wtime() - bc2S;
+                count_num_verts_matched(id,iter);
             }
-            //#pragma omp barrier
+            #pragma omp barrier
             iter++;
+            
             //printf("Iter %d\n",iter);
             
         }
@@ -878,14 +897,17 @@ double GraphGPU::run_pointer_chase()
             
         }
         CudaDeviceSynchronize();
-        printf("WarpWork\n");
+        
+        
+    }
+    
+    printf("WarpWork\n");
         for(int i=0;i<NGPU;i++){
             std::cout << "GPU " << i << std::endl;
             //printf("GPU %d\n",i);
             for(GraphElem j=0;j<numWarps;j++){
                 std::cout << j << "," << warpWork[i][j] << std::endl;
                 //printf("%ld,%ld\n",j,warpWork[i][j]);
-            }
         }
     }
     printf("P1Time: %f\n",p1total);

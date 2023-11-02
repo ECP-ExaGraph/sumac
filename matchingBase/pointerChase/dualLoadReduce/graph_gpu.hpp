@@ -132,6 +132,9 @@ class GraphGPU
     void determine_edge_device_partition();
     void partition_graph_edge_batch();
 
+    void degree_based_edge_device_partition();
+    void degree_based_edge_batch_partition();
+
     GraphElem max_order();
 
     void sum_vertex_weights(const int&);
@@ -186,7 +189,7 @@ class GraphGPU
     );
 
   public:
-    GraphGPU (Graph* graph, const int& nbatches, const int& part_on_deivce, const int& part_on_batch);
+    GraphGPU (Graph* graph, const int& nbatches, const int& part_on_deivce, const int& part_on_batch, const int& edgebal);
     ~GraphGPU();
 
     void set_community_ids(GraphElem* commIds);
@@ -279,6 +282,9 @@ class GraphGPU
     double multi_batch_p1_inc(int id, int threadCount);
     double multi_batch_p1_dec(int id, int threadCount);
     void move_batches_to_GPU_init();
+    GraphElem binarySearchIdx(GraphElem arr[], GraphElem l, GraphElem r, GraphElem val);
+    void logical_partition_devices();
+    void logical_partition_batches();
 
 };
 

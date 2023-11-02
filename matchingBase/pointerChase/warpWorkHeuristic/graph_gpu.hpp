@@ -286,6 +286,7 @@ class GraphGPU
     GraphElem binarySearchIdx(GraphElem arr[], GraphElem l, GraphElem r, GraphElem val);
     void logical_partition_devices();
     void logical_partition_batches();
+    double count_num_verts_matched(int id,int iter);
 
 };
 
