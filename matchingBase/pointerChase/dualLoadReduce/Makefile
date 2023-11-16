@@ -2,7 +2,7 @@ NVCC:=nvcc
 CC:=g++
 
 SM=70
-NGPU=4
+NGPU=8
 graph_ft_load=0
 check=0
 debug=0

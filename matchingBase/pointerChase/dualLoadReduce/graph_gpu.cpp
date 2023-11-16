@@ -138,7 +138,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
 
 
     CudaMalloc(vertex_per_device_[id], sizeof(GraphElem)*(NGPU+1));
-    CudaMallocHost(finishFlag[id], sizeof(char));
+    cudaMallocManaged(&finishFlag[id], sizeof(char));
 
     CudaMalloc(vertex_per_batch_device_[id], sizeof(GraphElem) * (nbatches+1));
     CudaMemcpyUVA(vertex_per_batch_device_[id], vertex_per_batch_[id], sizeof(GraphElem) * (nbatches+1));
@@ -775,14 +775,14 @@ double GraphGPU::run_pointer_chase()
                 //printf("Phase 1\n");
                 this->move_batch_to_GPU(0,id,0);
                 for(int batch_id=0;batch_id<nbatches_-1;batch_id++){
-                    if(id==0){
+                    /*if(id==0){
                         batchS = omp_get_wtime();
-                    }
+                    }*/
                     this->move_batch_to_GPU(batch_id+1,id,memsec);
-                    if(id==0){
-                        batchE = omp_get_wtime();
-                        batchTotal += batchE - batchS;
-                    }
+                    //if(id==0){
+                    //    batchE = omp_get_wtime();
+                    //    batchTotal += batchE - batchS;
+                    //}
                     if(memsec == 1)
                         memsec = 0;
                     else
@@ -800,46 +800,44 @@ double GraphGPU::run_pointer_chase()
                     vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id]);
                 //printf("Phase 1 End\n");
             }
-            if(id==0){
-                bc1S = omp_get_wtime();
-            }
+            //if(id==0){
+            //    bc1S = omp_get_wtime();
+            //}
             //gpuErrchk( cudaPeekAtLastError() );
             if(NGPU!=1){
                 for(int i=0;i<NGPU;i++){
                     GraphElem offset = vertex_per_device_host_[i];
                     GraphElem count = vertex_per_device_host_[i+1] - vertex_per_device_host_[i];
                     ncclBroadcast(partners_[id]+offset,partners_[id]+offset,count,ncclInt64,i,comm[id],0);
+                    CudaDeviceSynchronize();
 
                 }
             }
             //gpuErrchk( cudaPeekAtLastError() );
-            if(id==0){
+            /*if(id==0){
                 bc1E = omp_get_wtime();
                 bc1T += bc1E - bc1S;
             }
             if(id==0){
                 sp2 = omp_get_wtime();
-            }
-            flaghost_[0] = '0';
-            CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
+            }*/
+            finishFlag[id][0] = '0';
             batchCount = 0;
-            //printf("Phase 2\n");
+            #pragma omp barrier
             run_pointer_chase_p2(mate_[id],partners_[id],vertex_per_device_[id],vertex_per_device_host_,finishFlag[id],id,threadCount);
-            //printf("Phase 2 End\n");
-            //gpuErrchk( cudaPeekAtLastError() );
-            //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),0);
-            CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
-            if(flaghost_[0] == '1'){
-                //#pragma omp atomic
+            #pragma omp barrier
+            if(finishFlag[id][0] == '1'){
+                #pragma omp atomic
                 batchCount += 1;
             }
+            /*
             if(id==0){
                 ep2 = omp_get_wtime();
                 p2total += ep2 - sp2;
             }
             if(id==0){
                 bc2S = omp_get_wtime();
-            }
+            }*/
             if(NGPU!=1){
                 for(int i=0;i<NGPU;i++){
                     GraphElem offset = vertex_per_device_host_[i];
@@ -847,10 +845,11 @@ double GraphGPU::run_pointer_chase()
                     ncclBroadcast(mate_[id]+offset,mate_[id]+offset,count,ncclInt64,i,comm[id],0);
                 }
             }
+            /*
             if(id==0){
                 bc2E = omp_get_wtime();
                 bc2T += bc2E - bc2S;
-            }
+            }*/
             //gpuErrchk( cudaPeekAtLastError() );
             #pragma omp barrier
             iter++;
@@ -861,11 +860,11 @@ double GraphGPU::run_pointer_chase()
         if(id == 0){
             end = omp_get_wtime();
             printf("Number of Iterations: %d\n",iter);
-            printf("P1Time: %f\n",p1total);
-            printf("P2Time: %f\n",p2total);
-            printf("BC1Time: %f\n",bc1T);
-            printf("BC2Time: %f\n",bc2T);
-            printf("Batch Transfer: %f\n",batchTotal);
+            //printf("P1Time: %f\n",p1total);
+            //printf("P2Time: %f\n",p2total);
+            //printf("BC1Time: %f\n",bc1T);
+            //printf("BC2Time: %f\n",bc2T);
+            //printf("Batch Transfer: %f\n",batchTotal);
             printf("Total Time: %f\n",end-start);
         }
     }
