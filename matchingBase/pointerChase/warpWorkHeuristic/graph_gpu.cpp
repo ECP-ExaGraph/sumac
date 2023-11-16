@@ -139,7 +139,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
 
 
     CudaMallocHost(vertex_per_device_[id], sizeof(GraphElem)*(NGPU+1));
-    CudaMallocHost(finishFlag[id], sizeof(char));
+    cudaMallocManaged(&finishFlag[id], sizeof(char));
 
     CudaMallocHost(vertex_per_batch_device_[id], sizeof(GraphElem) * (nbatches+1));
     CudaMemcpyUVA(vertex_per_batch_device_[id], vertex_per_batch_[id], sizeof(GraphElem) * (nbatches+1));
@@ -708,6 +708,24 @@ double GraphGPU::count_num_verts_matched(int id,int iter){
     return total;
 }
 
+double GraphGPU::sum_weight_matching(int id, int iter){
+    GraphWeight total = 0.0;
+    #pragma omp parallel for num_threads(omp_get_max_threads())
+    for (GraphElem i = 0; i < NV_; i++) {
+        if (mate_[id][i] >= 0){
+            GraphElem adj1 = indicesHost_[i];
+            GraphElem adj2 = indicesHost_[i+1];
+            for(GraphElem j = adj1; j<adj2;j++){
+                if(mate_[id][i] == edgesHost_[j]){
+                    #pragma omp atomic
+                    total += edgeWeightsHost_[j];
+                }
+            }
+        }
+    }
+    printf("Total Weight of Matching: %f\n",total);
+}
+
 
 
 double GraphGPU::run_pointer_chase()
@@ -763,12 +781,12 @@ double GraphGPU::run_pointer_chase()
         
         
 
-
+        long numVertsMatched = 0;
 
 
         this->move_batch_to_GPU(0,id);
         start = omp_get_wtime();
-        while(batchCount != 0 && iter < 10){
+        while(batchCount != 0){
             
             if(nbatches_==1){
                 //this->single_batch_p1(id,threadCount);
@@ -854,6 +872,7 @@ double GraphGPU::run_pointer_chase()
                     GraphElem offset = vertex_per_device_host_[i];
                     GraphElem count = vertex_per_device_host_[i+1] - vertex_per_device_host_[i];
                     ncclBroadcast(partners_[id]+offset,partners_[id]+offset,count,ncclInt64,i,comm[id],0);
+                    CudaDeviceSynchronize();
 
                 }
             }
@@ -861,12 +880,18 @@ double GraphGPU::run_pointer_chase()
                 bc1T += omp_get_wtime() - bc1S;
                 sp2 = omp_get_wtime();
             }
-            flaghost_[0] = '0';
-            CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][0]);
+            //flaghost_[0] = '0';
+            //CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][0]);
+            //CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
+            #pragma omp barrier
+            finishFlag[id][0] = '0';
             batchCount = 0;
             run_pointer_chase_p2(mate_[id],partners_[id],vertex_per_device_[id],vertex_per_device_host_,finishFlag[id],id,threadCount,cuStreams[id]);
-            CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),cuStreams[id][0]);
-            if(flaghost_[0] == '1'){
+            //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),cuStreams[id][0]);
+            //CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
+            //printf("ID: %d, FFLAG: %c\n",id,finishFlag[id][0]);
+            #pragma omp barrier
+            if(finishFlag[id][0] != '0'){
                 #pragma omp atomic
                 batchCount += 1;
             }
@@ -879,10 +904,14 @@ double GraphGPU::run_pointer_chase()
                     GraphElem offset = vertex_per_device_host_[i];
                     GraphElem count = vertex_per_device_host_[i+1] - vertex_per_device_host_[i];
                     ncclBroadcast(mate_[id]+offset,mate_[id]+offset,count,ncclInt64,i,comm[id],0);
+                    CudaDeviceSynchronize();
                 }
             }
             if(id == 0){
                 bc2T += omp_get_wtime() - bc2S;
+                count_num_verts_matched(id,iter);
+            }
+            if(id == 1){
                 count_num_verts_matched(id,iter);
             }
             #pragma omp barrier
@@ -897,10 +926,12 @@ double GraphGPU::run_pointer_chase()
             
         }
         CudaDeviceSynchronize();
-        
+        //if(id == 0){
+        //    sum_weight_matching(id,0);
+        //}
         
     }
-    
+    /*
     printf("WarpWork\n");
         for(int i=0;i<NGPU;i++){
             std::cout << "GPU " << i << std::endl;
@@ -909,7 +940,7 @@ double GraphGPU::run_pointer_chase()
                 std::cout << j << "," << warpWork[i][j] << std::endl;
                 //printf("%ld,%ld\n",j,warpWork[i][j]);
         }
-    }
+    }*/
     printf("P1Time: %f\n",p1total);
     printf("P2Time: %f\n",p2total);
     printf("BC1Time: %f\n",bc1T);

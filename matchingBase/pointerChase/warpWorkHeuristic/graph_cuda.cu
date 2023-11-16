@@ -2885,7 +2885,7 @@ void set_mate_kernel
 
             if(edge == currVert)
                 continue;
-            if(weight>heaviest || (weight >= heaviest && edge>heaviestPartner)){
+            if(weight>heaviest || (weight == heaviest && edge>heaviestPartner)){
                 if(mate_[edge] != -1)
                     continue;
                 heaviestPartner = edge;
@@ -2950,6 +2950,7 @@ void fix_mate_kernel
             //printf("added %ld to mate with partner %ld\n",currVert,currPartner);
         }
         else{
+            //printf("Not Done: VERT: %ld PARTNER: %ld\n",currVert,currPartner);
             finishFlag[0] = '1';
         }
 
@@ -2982,10 +2983,10 @@ void run_pointer_chase_p1
     //printf("Starting P1 with Device %d and Batch %d with VPW: %d\n",device_id,batch_id,vertsPerWarp);
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[2]>>>
-    (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
-    //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[2]>>>
     //(indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
+    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
     
     //printf("Finished P1 with Device %d and Batch %d\n",device_id,batch_id);
     CudaDeviceSynchronize();
@@ -3043,11 +3044,12 @@ void run_pointer_chase_p2
     int vertsPerThread = ((vertex_per_device_host_[device_id+1] - vertex_per_device_host_[device_id])/(threadCount*nblocks))+1;
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[0]>>>
+    //CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[0]>>>
+    CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
     (vertex_per_device_,partners_,mate_,device_id,vertsPerThread,finishFlag)));
     //gpuErrchk( cudaPeekAtLastError() );
     //gpuErrchk( cudaDeviceSynchronize() );
-    //CudaDeviceSynchronize();
+    CudaDeviceSynchronize();
     
 }
 
