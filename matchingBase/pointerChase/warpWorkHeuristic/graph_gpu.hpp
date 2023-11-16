@@ -80,7 +80,7 @@ class GraphGPU
 
     std::vector<GraphElem> vertex_partition_[NGPU];
 
-    cudaStream_t cuStreams[NGPU][6];
+    cudaStream_t cuStreams[NGPU][4];
 
     //related to sorting
     thrust::device_ptr<GraphWeight> ordered_weights_ptr[NGPU];
@@ -287,7 +287,9 @@ class GraphGPU
     void logical_partition_devices();
     void logical_partition_batches();
     double count_num_verts_matched(int id,int iter);
+    double sum_weight_matching(int id, int iter);
 
 };
+
 
 #endif

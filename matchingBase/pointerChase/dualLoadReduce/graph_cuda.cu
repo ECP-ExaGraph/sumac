@@ -2983,7 +2983,7 @@ void run_pointer_chase_p1
     CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
     //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
-    gpuErrchk( cudaDeviceSynchronize() );
+    cudaDeviceSynchronize();
     
 }
 
