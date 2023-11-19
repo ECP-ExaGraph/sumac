@@ -276,7 +276,11 @@ class GraphGPU
     void move_edges_to_device_UVA();
     double run_pointer_chase();
     void move_batch_to_GPU(int batch_id,int device_id,int memsec);
+    void move_indices_to_GPU(int batch_id,int device_id,int memsec);
+    void move_edges_to_GPU(int batch_id,int device_id,int memsec);
+    void move_edgeWeights_to_GPU(int batch_id,int device_id,int memsec);
     void move_batch_from_GPU(int batch_id);
+    void batch_load_switch(int batch_id, int device_id, int memsec, int split_id);
     void set_P2P_Ptrs();
     double single_batch_p1(int id, int threadCount);
     double multi_batch_p1_inc(int id, int threadCount);

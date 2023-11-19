@@ -2980,8 +2980,8 @@ void run_pointer_chase_p1
     //printf("VertsPerWarp P1: %d\n",vertsPerWarp);
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
-    //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
+    //CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    CudaLaunch((set_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,device_id,batch_id,vertsPerWarp)));
     cudaDeviceSynchronize();
     
@@ -3027,7 +3027,8 @@ void run_pointer_chase_p2
     GraphElem* vertex_per_device_host_,
     char* finishFlag,
     int device_id,
-    int threadCount
+    int threadCount,
+    cudaStream_t* streams
 )
 {
 
@@ -3036,7 +3037,7 @@ void run_pointer_chase_p2
     int vertsPerThread = ((vertex_per_device_host_[device_id+1] - vertex_per_device_host_[device_id])/(threadCount*nblocks))+1;
     CudaSetDevice(device_id);
     //Run Mate Kernel
-    CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount>>>
+    CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     (vertex_per_device_,partners_,mate_,device_id,vertsPerThread,finishFlag)));
     //CudaDeviceSynchronize();
     
