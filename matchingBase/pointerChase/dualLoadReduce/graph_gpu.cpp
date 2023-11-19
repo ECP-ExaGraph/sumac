@@ -759,17 +759,13 @@ double GraphGPU::run_pointer_chase()
         int memsecRun = 0;
         int iter = 0;
         int threadCount = BLOCKDIM02;
-        char* flaghost_ = new char[1];
-        flaghost_[0] = '1';
         
         this->move_batch_to_GPU(0,id,0);
         if(nbatches_!=1)
             this->move_batch_to_GPU(1,id,1);
         start = omp_get_wtime();
         while(batchCount != 0){
-            memsecTransfer = 1;
-
-        
+            printf("Phase 1\n");
             if(nbatches_==1){
                 if(id == 0){
                     sp1 = omp_get_wtime();
@@ -796,6 +792,9 @@ double GraphGPU::run_pointer_chase()
                         this->batch_load_switch(0,id,0,split_id);
                     }
                     #pragma omp barrier
+                    for(int i=0;i<4;i++){
+                        cudaStreamSynchronize(cuStreams[id][i]);
+                    }
                     for(int batch_id=1;batch_id<nbatches_;batch_id++){
                         if(split_id < 3)
                         {
@@ -808,11 +807,13 @@ double GraphGPU::run_pointer_chase()
                             if(id == 0){
                                 batchTotal += omp_get_wtime() - batchS;
                             }
-                            if(memsecTransfer == 1){
-                                memsecTransfer = 0;
-                            }
-                            else{
-                                memsecTransfer = 1;
+                            if(split_id == 0){
+                                if(memsecTransfer == 1){
+                                    memsecTransfer = 0;
+                                }
+                                else{
+                                    memsecTransfer = 1;
+                                }
                             }
                         }
                         if(split_id == 3)
@@ -833,6 +834,9 @@ double GraphGPU::run_pointer_chase()
                             }
                         }
                         #pragma omp barrier
+                        for(int i=0;i<4;i++){
+                            cudaStreamSynchronize(cuStreams[id][i]);
+                        }
                     }
                     if(split_id == 3)
                     {
@@ -845,75 +849,13 @@ double GraphGPU::run_pointer_chase()
                             p1total += omp_get_wtime() - sp1;
                         }
                     }
-                    /*
-                    if(split_id == 0){
-                        this->move_batch_to_GPU(0,id,0);
-                    }
-                    #pragma omp barrier
-                    for(int batch_id=0;batch_id<nbatches_-1;batch_id++){
-                        if(split_id == 0){
-                            this->move_batch_to_GPU(batch_id+1,id,memsecTransfer);
-                            if(memsecTransfer == 1){
-                                memsecTransfer = 0;
-                            }
-                            else{
-                                memsecTransfer = 1;
-                            }
-                        }
-                        else{
-                            if(memsecRun == 1){
-                                memsecRun = 0;
-                            }
-                            else{
-                                memsecRun = 1;
-                            }
-                            run_pointer_chase_p1(indices_[id][memsecRun],edgeWeights_[id][memsecRun],edges_[id][memsecRun],mate_[id],partners_[id],
-                                vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id]);
-                        }
-                        #pragma omp barrier
-                    }
-                    if(split_id == 0){
-                        if(memsecTransfer == 1)
-                            memsecTransfer = 0;
-                        else
-                            memsecTransfer = 1;
-                        run_pointer_chase_p1(indices_[id][memsecTransfer],edgeWeights_[id][memsecTransfer],edges_[id][memsecTransfer],mate_[id],partners_[id],
-                            vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id]);
-                    }*/
                 }
-
-                /*
-                //printf("Phase 1\n");
-                this->move_batch_to_GPU(0,id,0);
-                for(int batch_id=0;batch_id<nbatches_-1;batch_id++){
-                    /*if(id==0){
-                        batchS = omp_get_wtime();
-                    }
-                    this->move_batch_to_GPU(batch_id+1,id,memsec);
-                    //if(id==0){
-                    //    batchE = omp_get_wtime();
-                    //    batchTotal += batchE - batchS;
-                    //}
-                    if(memsec == 1)
-                        memsec = 0;
-                    else
-                        memsec = 1;
-                    run_pointer_chase_p1(indices_[id][memsec],edgeWeights_[id][memsec],edges_[id][memsec],mate_[id],partners_[id],
-                    vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id]);
-                    }
-                
-                if(memsec == 1)
-                    memsec = 0;
-                else
-                    memsec = 1;
-                run_pointer_chase_p1(indices_[id][memsec],edgeWeights_[id][memsec],edges_[id][memsec],mate_[id],partners_[id],
-                    vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id]);
-                //printf("Phase 1 End\n");*/
             }
             #pragma omp barrier
             for(int i=0;i<4;i++){
                 cudaStreamSynchronize(cuStreams[id][i]);
             }
+            printf("Phase 1 End\n");
             if(id==0){
                 bc1S = omp_get_wtime();
             }
@@ -937,17 +879,17 @@ double GraphGPU::run_pointer_chase()
             }*/
             finishFlag[id][0] = '0';
             batchCount = 0;
-            //printf("Phase 2\n");
+            printf("Phase 2\n");
             run_pointer_chase_p2(mate_[id],partners_[id],vertex_per_device_[id],vertex_per_device_host_,finishFlag[id],id,threadCount,cuStreams[id]);
             #pragma omp barrier
             for(int i=0;i<4;i++){
                 cudaStreamSynchronize(cuStreams[id][i]);
             }
-            //printf("Phase 2 End\n");
+            printf("Phase 2 End\n");
             //gpuErrchk( cudaPeekAtLastError() );
             //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),0);
             //CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
-            if(flaghost_[0] == '1'){
+            if(finishFlag[id][0] == '1'){
                 #pragma omp atomic
                 batchCount += 1;
             }
