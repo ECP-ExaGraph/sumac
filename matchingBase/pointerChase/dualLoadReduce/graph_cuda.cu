@@ -2886,7 +2886,7 @@ void set_mate_kernel
 
             if(edge == currVert)
                 continue;
-            if(weight>heaviest || (weight >= heaviest && edge>heaviestPartner)){
+            if(weight>heaviest || (weight == heaviest && edge>heaviestPartner)){
                 if(mate_[edge] != -1)
                     continue;
                 heaviestPartner = edge;
@@ -3039,7 +3039,7 @@ void run_pointer_chase_p2
     //Run Mate Kernel
     CudaLaunch((fix_mate_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[3]>>>
     (vertex_per_device_,partners_,mate_,device_id,vertsPerThread,finishFlag)));
-    //CudaDeviceSynchronize();
+    CudaDeviceSynchronize();
     
 }
 

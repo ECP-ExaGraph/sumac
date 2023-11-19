@@ -138,7 +138,7 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
 
 
     CudaMalloc(vertex_per_device_[id], sizeof(GraphElem)*(NGPU+1));
-    CudaMallocHost(finishFlag[id], sizeof(char));
+    cudaMallocManaged(&finishFlag[id], sizeof(char));
 
     CudaMalloc(vertex_per_batch_device_[id], sizeof(GraphElem) * (nbatches+1));
     CudaMemcpyUVA(vertex_per_batch_device_[id], vertex_per_batch_[id], sizeof(GraphElem) * (nbatches+1));
@@ -886,22 +886,21 @@ double GraphGPU::run_pointer_chase()
                 //printf("Phase 1\n");
                 this->move_batch_to_GPU(0,id,0);
                 for(int batch_id=0;batch_id<nbatches_-1;batch_id++){
-                    if(id==0){
+                    /*if(id==0){
                         batchS = omp_get_wtime();
                     }
                     this->move_batch_to_GPU(batch_id+1,id,memsec);
-                    if(id==0){
-                        batchE = omp_get_wtime();
-                        batchTotal += batchE - batchS;
-                    }
+                    //if(id==0){
+                    //    batchE = omp_get_wtime();
+                    //    batchTotal += batchE - batchS;
+                    //}
                     if(memsec == 1)
                         memsec = 0;
                     else
                         memsec = 1;
                     run_pointer_chase_p1(indices_[id][memsec],edgeWeights_[id][memsec],edges_[id][memsec],mate_[id],partners_[id],
                     vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id,threadCount,cuStreams[id]);
-                    
-                }
+                    }
                 
                 if(memsec == 1)
                     memsec = 0;
@@ -924,19 +923,19 @@ double GraphGPU::run_pointer_chase()
                     GraphElem offset = vertex_per_device_host_[i];
                     GraphElem count = vertex_per_device_host_[i+1] - vertex_per_device_host_[i];
                     ncclBroadcast(partners_[id]+offset,partners_[id]+offset,count,ncclInt64,i,comm[id],0);
+                    CudaDeviceSynchronize();
 
                 }
             }
             //gpuErrchk( cudaPeekAtLastError() );
-            if(id==0){
+            /*if(id==0){
                 bc1E = omp_get_wtime();
                 bc1T += bc1E - bc1S;
             }
             if(id==0){
                 sp2 = omp_get_wtime();
-            }
-            flaghost_[0] = '0';
-            CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
+            }*/
+            finishFlag[id][0] = '0';
             batchCount = 0;
             //printf("Phase 2\n");
             run_pointer_chase_p2(mate_[id],partners_[id],vertex_per_device_[id],vertex_per_device_host_,finishFlag[id],id,threadCount,cuStreams[id]);
@@ -947,18 +946,19 @@ double GraphGPU::run_pointer_chase()
             //printf("Phase 2 End\n");
             //gpuErrchk( cudaPeekAtLastError() );
             //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),0);
-            CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
+            //CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
             if(flaghost_[0] == '1'){
                 #pragma omp atomic
                 batchCount += 1;
             }
+            /*
             if(id==0){
                 ep2 = omp_get_wtime();
                 p2total += ep2 - sp2;
             }
             if(id==0){
                 bc2S = omp_get_wtime();
-            }
+            }*/
             if(NGPU!=1){
                 for(int i=0;i<NGPU;i++){
                     GraphElem offset = vertex_per_device_host_[i];
@@ -966,10 +966,11 @@ double GraphGPU::run_pointer_chase()
                     ncclBroadcast(mate_[id]+offset,mate_[id]+offset,count,ncclInt64,i,comm[id],0);
                 }
             }
+            /*
             if(id==0){
                 bc2E = omp_get_wtime();
                 bc2T += bc2E - bc2S;
-            }
+            }*/
             //gpuErrchk( cudaPeekAtLastError() );
             #pragma omp barrier
             iter++;
