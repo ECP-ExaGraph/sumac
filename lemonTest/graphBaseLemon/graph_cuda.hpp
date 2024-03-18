@@ -395,7 +395,7 @@ void run_pointer_chase_p2
     GraphElem* partners_,
     GraphElem* vertex_per_device_,
     GraphElem* vertex_per_device_host_,
-    int* finishFlag,
+    char* finishFlag,
     int device_id,
     int threadCount,
     cudaStream_t* streams
@@ -427,23 +427,6 @@ void run_pointer_chase_p2_warp
 );
 
 void run_both_phases
-(
-    GraphElem* indices_,
-    GraphWeight* edgeWeights_,
-    GraphElem* edgeList_,
-    GraphElem* mate_,
-    GraphElem* partners_,
-    GraphElem* vertex_per_batch_device_,
-    GraphElem* vertex_per_batch_,
-    GraphElem* vertex_per_device_,
-    int device_id,
-    int batch_id,
-    int threadCount,
-    GraphElem* vertex_per_device_host_,
-    char* finishFlag,
-    cudaStream_t* streams
-);
-void run_alg_single_gpu
 (
     GraphElem* indices_,
     GraphWeight* edgeWeights_,

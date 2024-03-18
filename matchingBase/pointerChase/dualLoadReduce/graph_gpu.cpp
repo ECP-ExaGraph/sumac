@@ -36,6 +36,12 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     edgeWeightsHost_ = graph_->get_edge_weights();
     edgesHost_       = graph_->get_edges();
 
+
+    mate_host_ = new GraphElem[NV_];
+    partners_host_ = new GraphElem[NV_];
+
+
+    
     
     /*if(edgebal){
         degree_based_edge_device_partition();
@@ -58,7 +64,8 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
         CudaSetDevice(id);
 
         for(unsigned i = 0; i < 4; ++i)
-            CudaCall(cudaStreamCreateWithFlags(&cuStreams[id][i],cudaStreamNonBlocking));
+            //CudaCall(cudaStreamCreateWithFlags(&cuStreams[id][i],cudaStreamNonBlocking));
+            CudaCall(cudaStreamCreate(&cuStreams[id][i]));
 
         e0_[id] = 0; e1_[id] = 0;
         w0_[id] = 0; w1_[id] = 0;
@@ -117,6 +124,8 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
     }
     int numBuffers = 2;
 
+
+    
     printf("id: %d MAXNV: %ld MAXNE: %ld\n",id,maxnv,maxne);
     cudaMallocHost((void**)&indices_[id], numBuffers * sizeof(GraphElem*));
     for (int j = 0; j < numBuffers; j++)
@@ -138,7 +147,8 @@ NV_(0), NE_(0), maxOrder_(0), mass_(0)
 
 
     CudaMalloc(vertex_per_device_[id], sizeof(GraphElem)*(NGPU+1));
-    cudaMallocManaged(&finishFlag[id], sizeof(char));
+    //CudaMallocHost(finishFlag[id], sizeof(char));
+    cudaMallocManaged(&finishFlag[id], sizeof(int)*(NGPU));
 
     CudaMalloc(vertex_per_batch_device_[id], sizeof(GraphElem) * (nbatches+1));
     CudaMemcpyUVA(vertex_per_batch_device_[id], vertex_per_batch_[id], sizeof(GraphElem) * (nbatches+1));
@@ -196,7 +206,8 @@ GraphGPU::~GraphGPU()
 
         for(unsigned i = 0; i < 4; ++i)
             CudaCall(cudaStreamDestroy(cuStreams[g][i]));
-        free(mate_host_[g]);
+        free(mate_host_);
+        free(partners_host_);
         CudaFreeHost(edges_[g]);
         CudaFreeHost(edgeWeights_[g]);
         //CudaFree(commIdKeys_[g]);
@@ -707,6 +718,7 @@ double GraphGPU::multi_batch_p1_dec(int id, int threadCount){
 
 double GraphGPU::run_pointer_chase()
 {
+
     omp_set_nested(1);
     omp_set_num_threads(NGPU);
 
@@ -733,12 +745,14 @@ double GraphGPU::run_pointer_chase()
 
     double syncS;
     double syncTotal = 0;
-
     int batchCount = 1;
+    
     double totalTime = 0;
     double start;
     double end;
 
+
+    bool donep2;
     //printf("Initializing Data Host\n");
     //move_batches_to_GPU_init();
     //printf("Finished Initializing Data\n");
@@ -747,8 +761,7 @@ double GraphGPU::run_pointer_chase()
     #pragma omp parallel
     {
         int id = omp_get_thread_num() % NGPU; 
-
-
+        
         CudaSetDevice(id);
 
         ncclResult_t nccl_result;
@@ -758,17 +771,61 @@ double GraphGPU::run_pointer_chase()
         ncclCommUserRank(comm[id], &rank);
         ncclCommCount(comm[id], &nranks);
         //printf("Device ID: %d Rank: %d\n",id,rank);
-        int memsecTransfer = 1;
-        int memsecRun = 0;
+        //int memsecTransfer = 1;
+        //int memsecRun = 0;
         int iter = 0;
         int threadCount = BLOCKDIM02;
-        
+        finishFlag[id][0] = 1;
+        //char* flaghost_ = new char[1];
+        //flaghost_[0] = '1';
+        //CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
         this->move_batch_to_GPU(0,id,0);
         if(nbatches_!=1)
             this->move_batch_to_GPU(1,id,1);
+        //CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
+        CudaDeviceSynchronize();
         start = omp_get_wtime();
-        while(batchCount != 0){
-            //printf("Phase 1\n");
+        gpuErrchk( cudaPeekAtLastError() );
+
+        //Test case 1 GPU
+        /*if(NGPU == 1){
+            printf("Running 1 GPU\n");
+            start = omp_get_wtime();
+            run_alg_single_gpu(indices_[id][0],edgeWeights_[id][0],edges_[id][0],mate_[id],partners_[id],
+                    vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,vertex_per_device_host_,finishFlag[id],cuStreams[id]);
+            cudaDeviceSynchronize();
+            end = omp_get_wtime();
+            printf("Done\n");
+        }
+        else{*/
+
+
+
+        //while(flaghost_[0] != '0'){
+        while(finishFlag[id][0] != 0){
+
+            //printf("Phase 1: %d - %d\n",id,iter);
+
+            /*if(NGPU == 1 && nbatches_==1){
+                flaghost_[0] = '0';
+                CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][1]);
+                //CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
+                printf("Starting both phases\n");
+                run_both_phases(indices_[id][0],edgeWeights_[id][0],edges_[id][0],mate_[id],partners_[id],
+                    vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,0,threadCount,vertex_per_device_host_,finishFlag[id],cuStreams[id]);
+                //CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
+                CudaMemcpyAsyncDtoH(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][1]);
+                printf("Finished both phases\n");
+                if(flaghost_[0] == '1'){
+                //#pragma omp atomic
+                    batchCount += 1;
+                }
+                iter++;
+                printf("Iter %d\n",iter);
+                continue;
+                
+            }*/
+
             if(nbatches_==1){
                 if(id == 0){
                     sp1 = omp_get_wtime();
@@ -778,36 +835,42 @@ double GraphGPU::run_pointer_chase()
                 if(id == 0){
                     p1total += omp_get_wtime() - sp1;
                 }
+                //cudaStreamSynchronize(cuStreams[id][3]);
             }
             else{
-                memsecRun = 0;
-                memsecTransfer = 1;
+                
                 #pragma omp parallel num_threads(4)
                 {
+                    int memsecRun = 0;
+                    int memsecTransfer = 1;
                     int split_id = omp_get_thread_num();
                     //printf("GPU %d - %d\n",id,split_id);
                     if(split_id < 3)
                     {
-                        if(id == 0){
+                        /*if(id == 0){
                             batchS = omp_get_wtime();
                         }
                         //this->move_batch_to_GPU(0,id,0);
-                        this->batch_load_switch(0,id,0,split_id);
+                        for(int i=0;i<3;i++){
+                            cudaStreamSynchronize(cuStreams[id][i]);
+                        }
+                        //this->batch_load_switch(0,id,0,split_id);
 
                         if(id == 0 && split_id == 0){
                             batchTotal += (omp_get_wtime() - batchS);
-                        }
+                        }*/
 
                     }
                     if(id == 0 && split_id == 0){
-                        syncS = omp_get_wtime();
+                        batchS = omp_get_wtime();
                     }
-                    #pragma omp barrier
-                    for(int i=0;i<4;i++){
+                    
+                    for(int i=0;i<3;i++){
                         cudaStreamSynchronize(cuStreams[id][i]);
                     }
+                    #pragma omp barrier
                     if(id == 0 && split_id == 0){
-                        syncTotal += (omp_get_wtime() - syncS);
+                        batchTotal += (omp_get_wtime() - batchS);
                     }
                     for(int batch_id=1;batch_id<nbatches_;batch_id++){
                         if(split_id < 3)
@@ -816,27 +879,31 @@ double GraphGPU::run_pointer_chase()
                                 batchS = omp_get_wtime();
                             }
                             //this->move_batch_to_GPU(batch_id,id,memsecTransfer);
+                            //printf("Loading batch %d memsec %d as split %d\n",batch_id,memsecTransfer,split_id);
+                            
                             this->batch_load_switch(batch_id,id,memsecTransfer,split_id);
-
+                            //gpuErrchk( cudaPeekAtLastError() );
                             if(id == 0 && split_id == 0){
                                 batchTotal += (omp_get_wtime() - batchS);
                             }
-                            if(split_id == 0){
-                                if(memsecTransfer == 1){
-                                    memsecTransfer = 0;
-                                }
-                                else{
-                                    memsecTransfer = 1;
-                                }
+                            //if(split_id == 0){
+                            if(memsecTransfer == 1){
+                                memsecTransfer = 0;
                             }
+                            else{
+                                memsecTransfer = 1;
+                            }
+                            //}
                         }
                         if(split_id == 3)
                         {
                             if(id == 0){
                                 sp1 = omp_get_wtime();
                             }
+                            //printf("Running batch %d memsec %d as split %d\n",batch_id-1,memsecRun,split_id);
                             run_pointer_chase_p1(indices_[id][memsecRun],edgeWeights_[id][memsecRun],edges_[id][memsecRun],mate_[id],partners_[id],
                                 vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,batch_id-1,threadCount,cuStreams[id]);
+                            //gpuErrchk( cudaPeekAtLastError() );
                             if(id == 0){
                                 p1total += (omp_get_wtime() - sp1);
                             }
@@ -848,14 +915,15 @@ double GraphGPU::run_pointer_chase()
                             }
                         }
                         if(id == 0 && split_id == 0){
-                            syncS = omp_get_wtime();
+                            sp1 = omp_get_wtime();
                         }
-                        #pragma omp barrier
+                        
                         for(int i=0;i<4;i++){
                             cudaStreamSynchronize(cuStreams[id][i]);
                         }
+                        #pragma omp barrier
                         if(id == 0 && split_id == 0){
-                            syncTotal += (omp_get_wtime() - syncS);
+                            p1total += (omp_get_wtime() - sp1);
                         }
                     }
                     if(split_id == 3)
@@ -863,30 +931,50 @@ double GraphGPU::run_pointer_chase()
                         if(id == 0){
                             sp1 = omp_get_wtime();
                         }
+                        //printf("Running batch %d memsec %d as split %d\n",nbatches_-1,memsecRun,split_id);
                         run_pointer_chase_p1(indices_[id][memsecRun],edgeWeights_[id][memsecRun],edges_[id][memsecRun],mate_[id],partners_[id],
                                 vertex_per_batch_device_[id], vertex_per_batch_[id], vertex_per_device_[id],id,nbatches_-1,threadCount,cuStreams[id]);
+                        //gpuErrchk( cudaPeekAtLastError() );
                         if(id == 0){
                             p1total += omp_get_wtime() - sp1;
                         }
                     }
                 }
+                if(id == 0){
+                    sp1 = omp_get_wtime();
+                }
+                
+                //for(int i=0;i<4;i++){
+                //gpuErrchk( cudaPeekAtLastError() );
+
+                cudaStreamSynchronize(cuStreams[id][3]);
+                this->batch_load_switch(0,id,0,0);
+                this->batch_load_switch(0,id,0,1);
+                this->batch_load_switch(0,id,0,2);
+                //gpuErrchk( cudaPeekAtLastError() );
+                //}
+                #pragma omp barrier
+                if(id == 0){
+                    p1total += (omp_get_wtime() - sp1);
+                }
+
             }
-            if(id == 0){
+            gpuErrchk( cudaPeekAtLastError() );
+
+            if(id==0){
                 syncS = omp_get_wtime();
             }
             #pragma omp barrier
-            for(int i=0;i<4;i++){
-                cudaStreamSynchronize(cuStreams[id][i]);
-            }
-            if(id == 0){
+            cudaDeviceSynchronize();
+            if(id==0){
                 syncTotal += (omp_get_wtime() - syncS);
             }
 
-            //printf("Phase 1 End\n");
+            
+            //printf("Phase 1 End: %d - %d\n",id, iter);
             if(id==0){
                 bc1S = omp_get_wtime();
             }
-            //gpuErrchk( cudaPeekAtLastError() );
             if(NGPU!=1){
                 for(int i=0;i<NGPU;i++){
                     GraphElem offset = vertex_per_device_host_[i];
@@ -896,41 +984,121 @@ double GraphGPU::run_pointer_chase()
 
                 }
             }
+            //#pragma omp barrier
             //gpuErrchk( cudaPeekAtLastError() );
             if(id==0){
                 bc1E = omp_get_wtime();
                 bc1T += (bc1E - bc1S);
             }
+
+
+            
+            //#pragma omp barrier
+            //finishFlag[id][0] = '0';
+            
+            /*printf("Here\n");
+            donep2 = 0;
+            #pragma omp barrier
+            if(id == 0){
+                this->move_matching_to_host(id);
+                printf("Moved to host\n");
+                donep2 = this->cpu_thread_match_fix(id,flaghost_);
+                printf("Cpu match\n");
+                for(int i=0;i<NGPU;i++){
+                    CudaMemcpyHtoD(mate_[i],mate_host_,NV_*sizeof(GraphElem));
+                }
+            }
+            #pragma omp barrier
+            if(donep2 == 1){
+                batchCount += 1;
+            }
+            gpuErrchk( cudaPeekAtLastError() );
+            */
+            
+            
+            
+            
+            
+            //CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][3]);
+            //#pragma omp barrier
             if(id==0){
                 sp2 = omp_get_wtime();
             }
-            finishFlag[id][0] = '0';
+            //flaghost_[0] = '0';
+            //gpuErrchk( cudaPeekAtLastError() );
+            //CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][3]);
+            //gpuErrchk( cudaPeekAtLastError() );
+            //CudaMemcpyHtoD(finishFlag[id],flaghost_,sizeof(char));
+            //CudaMemcpyAsyncHtoD(finishFlag[id],flaghost_,sizeof(char),cuStreams[id][1]);
+            
+            finishFlag[id][0] = 0;
+            
+            if(id==0){
+                p2total += (omp_get_wtime() - sp2);
+            }
+            
             batchCount = 0;
-            //printf("Phase 2\n");
+            //printf("Phase 2: %d - %d\n", id, iter);
+            if(id==0){
+                sp2 = omp_get_wtime();
+            }
+            //gpuErrchk( cudaPeekAtLastError() );
             run_pointer_chase_p2(mate_[id],partners_[id],vertex_per_device_[id],vertex_per_device_host_,finishFlag[id],id,threadCount,cuStreams[id]);
+            //gpuErrchk( cudaPeekAtLastError() );
+            cudaStreamSynchronize(cuStreams[id][3]);
+            cudaDeviceSynchronize();
             #pragma omp barrier
-            for(int i=0;i<4;i++){
-                cudaStreamSynchronize(cuStreams[id][i]);
-            }
-            //printf("Phase 2 End\n");
-            if(finishFlag[id][0] == '1'){
-                #pragma omp atomic
-                batchCount += 1;
-            }
             if(id==0){
                 ep2 = omp_get_wtime();
                 p2total += (ep2 - sp2);
             }
+            #pragma omp barrier
+            
+            if(id==0){
+                sp2 = omp_get_wtime();
+            }
+            //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),cuStreams[id][3]);
+            //CudaMemcpyDtoH(flaghost_,finishFlag[id],sizeof(char));
+            cudaDeviceSynchronize();
+            if(id==0){
+                p2total += (omp_get_wtime() - sp2);
+            }
+            //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),cuStreams[id][3]);
+            //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),cuStreams[id][3]);
+            //printf("id: %d flagHost: %d\n",id,finishFlag[id][0]);
+            //CudaMemcpyAsyncDtoH(flaghost_,finishFlag[id],sizeof(char),cuStreams[id][3]);
+            //printf("flaghost_: %c\n",flaghost_[0]);
+            
+            //gpuErrchk( cudaPeekAtLastError() );
+            //cudaStreamSynchronize(cuStreams[id][3]);
+            //printf("Phase 2 End\n");
+            if(id == 0){
+                sp2 = omp_get_wtime();
+            }
+            //if(finishFlag[id][0] == '1'){
+            cudaStreamSynchronize(cuStreams[id][3]);
+            
+            if(id == 0){
+                p2total += omp_get_wtime() - sp2;
+            }
+            
+            
             if(id==0){
                 bc2S = omp_get_wtime();
             }
+            //printf("GPU:%d\n",id);
+            #pragma omp barrier
             if(NGPU!=1){
                 for(int i=0;i<NGPU;i++){
                     GraphElem offset = vertex_per_device_host_[i];
                     GraphElem count = vertex_per_device_host_[i+1] - vertex_per_device_host_[i];
                     ncclBroadcast(mate_[id]+offset,mate_[id]+offset,count,ncclInt64,i,comm[id],0);
                 }
+                ncclAllReduce(finishFlag[id],finishFlag[id],1,ncclInt,ncclMax,comm[id],0);
             }
+            //printf("id: %d flagHost: %d\n",id,finishFlag[id][0]);
+            gpuErrchk( cudaPeekAtLastError() );
+            #pragma omp barrier
             
             if(id==0){
                 bc2E = omp_get_wtime();
@@ -943,34 +1111,59 @@ double GraphGPU::run_pointer_chase()
             #pragma omp barrier
             iter++;
             cudaDeviceSynchronize();
+            //printf("Iter %d\n",iter);
             if(id == 0){
                 syncTotal += (omp_get_wtime() - syncS);
             }
-            printf("Iter %d\n",iter);
             
+
             
+           
         }
         if(id == 0){
+            end = omp_get_wtime();
+            
             printf("Number of Iterations: %d\n",iter);
+            
             //printf("P1Time: %f\n",p1total);
             //printf("P2Time: %f\n",p2total);
             //printf("BC1Time: %f\n",bc1T);
             //printf("BC2Time: %f\n",bc2T);
             //printf("Batch Transfer: %f\n",batchTotal);
-            //printf("Total Time: %f\n",end-start);
+            printf("Total Time: %f\n",end-start);
+            CudaMemcpyDtoH(mate_host_,mate_[0],NV_*sizeof(GraphElem))
+            gpuErrchk( cudaPeekAtLastError() );
         }
+        
     }
-    end = omp_get_wtime();
+    //end = omp_get_wtime();
     printf("P1Time: %f\n",p1total);
     printf("P2Time: %f\n",p2total);
     printf("BC1Time: %f\n",bc1T);
     printf("BC2Time: %f\n",bc2T);
     printf("Batch Transfer: %f\n",batchTotal);
     printf("Sync Time: %f\n",syncTotal);
+
+    //}
+
     printf("Total Time: %f\n",end-start);
+
+    GraphElem totalMatched = 0;
+    printf("NV_: %ld\n",NV_);
+    
+    CudaDeviceSynchronize();
+    for(GraphElem i=0;i<NV_;i++){
+        //printf("%ld - %ld\n",i,mate_host_[i]);
+        if(mate_host_[i] != -1){
+            totalMatched++;
+        }
+    }
+    printf("Total Edges Matched: %ld\n",totalMatched/2);
+
     CudaDeviceSynchronize();
     gpuErrchk( cudaPeekAtLastError() );
     totalTime += end - start;
+    
     return totalTime;
     
     //gpuErrchk( cudaDeviceSynchronize() );
@@ -1038,7 +1231,7 @@ void GraphGPU::move_edgeWeights_to_GPU(int batch_id,int device_id,int memsec){
     GraphElem e0 = indicesHost_[v0];
     GraphElem e1 = indicesHost_[v1];
     GraphElem ne = e1-e0;
-    cudaMemcpyAsync(edgeWeights_[device_id][memsec],edgeWeightsHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice,cuStreams[device_id][2]);
+    cudaMemcpyAsync(edgeWeights_[device_id][memsec],edgeWeightsHost_ + e0, sizeof(GraphWeight) * ne, cudaMemcpyHostToDevice,cuStreams[device_id][2]);
 }
 
 void GraphGPU::move_batch_to_GPU(int batch_id,int device_id,int memsec){
@@ -1055,12 +1248,12 @@ void GraphGPU::move_batch_to_GPU(int batch_id,int device_id,int memsec){
         //CudaMemcpyAsyncHtoD(edges1_[device_id], edgesHost_ + e0, sizeof(GraphElem) * ne,cuStreams[device_id][1]);
         //CudaMemcpyAsyncHtoD(edgeWeights1_[device_id], edgeWeightsHost_ + e0, sizeof(GraphWeight) * ne,cuStreams[device_id][2]);
         
-        cudaMemcpyAsync(indices_[device_id][memsec],indicesHost_ + v0, sizeof(GraphElem) * nv, cudaMemcpyHostToDevice,cuStreams[device_id][0]);
-        cudaMemcpyAsync(edges_[device_id][memsec],edgesHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice,cuStreams[device_id][1]);
-        cudaMemcpyAsync(edgeWeights_[device_id][memsec],edgeWeightsHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice,cuStreams[device_id][2]);
-        //cudaMemcpy(indices_[device_id][memsec],indicesHost_ + v0, sizeof(GraphElem) * nv, cudaMemcpyHostToDevice);
-        //cudaMemcpy(edges_[device_id][memsec],edgesHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice);
-        //cudaMemcpy(edgeWeights_[device_id][memsec],edgeWeightsHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice);
+        //cudaMemcpyAsync(indices_[device_id][memsec],indicesHost_ + v0, sizeof(GraphElem) * nv, cudaMemcpyHostToDevice,cuStreams[device_id][0]);
+        //cudaMemcpyAsync(edges_[device_id][memsec],edgesHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice,cuStreams[device_id][1]);
+        //cudaMemcpyAsync(edgeWeights_[device_id][memsec],edgeWeightsHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice,cuStreams[device_id][2]);
+        cudaMemcpy(indices_[device_id][memsec],indicesHost_ + v0, sizeof(GraphElem) * nv, cudaMemcpyHostToDevice);
+        cudaMemcpy(edges_[device_id][memsec],edgesHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice);
+        cudaMemcpy(edgeWeights_[device_id][memsec],edgeWeightsHost_ + e0, sizeof(GraphElem) * ne, cudaMemcpyHostToDevice);
         //CudaMemcpyAsyncHtoD(indices_[device_id][memsec],indicesHost_ + v0, sizeof(GraphElem) * nv, cuStreams[device_id][0]);
         //gpuErrchk( cudaPeekAtLastError() );
         //CudaMemcpyAsyncHtoD(edges_[device_id][memsec],edgesHost_ + e0, sizeof(GraphElem) * ne, cuStreams[device_id][1]);
@@ -1076,3 +1269,39 @@ void GraphGPU::move_batch_to_GPU(int batch_id,int device_id,int memsec){
 
 }
 
+bool GraphGPU::cpu_thread_match_fix(int device_id, char* flaghost_){
+    //int vertsPerThread = ((vertex_per_device_host_[device_id+1] - vertex_per_device_host_[device_id])/(threadCount*nblocks))+1;
+    bool flag = 0;
+    #pragma omp parallel for num_threads(100)
+    //for(GraphElem vert = vertex_per_device_host_[device_id]; vert<vertex_per_device_host_[device_id+1];vert++){
+    for(GraphElem vert = 0; vert < NV_; vert++){
+        //printf("Vert:%ld\n",vert);
+        //if(vert>=vertex_per_device_host_[device_id+1]){
+        //    continue;
+        //}
+        if(mate_host_[vert] != -1){
+            continue;
+        }
+        GraphElem currPartner = partners_host_[vert];
+        if(currPartner == -1){
+            continue;
+        }
+        
+        //printf("Vert: %ld partner: %ld\n",currVert,currPartner);
+
+        if(partners_host_[currPartner]==vert){
+            mate_host_[vert] = currPartner; 
+            //printf("added %ld to mate with partner %ld\n",vert,currPartner);
+        }
+        else{
+            flag = 1;
+        }
+    }
+    return flag;
+}
+
+void GraphGPU::move_matching_to_host(int device_id){
+    CudaMemcpyDtoH(mate_host_,mate_[device_id],NV_*sizeof(GraphElem));
+    CudaMemcpyDtoH(partners_host_,partners_[device_id],NV_*sizeof(GraphElem));
+    CudaDeviceSynchronize();
+}

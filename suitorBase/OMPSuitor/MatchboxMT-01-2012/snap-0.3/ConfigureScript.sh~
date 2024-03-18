@@ -1,2 +1,0 @@
-./configure --enable-openmp --enable-static
- 

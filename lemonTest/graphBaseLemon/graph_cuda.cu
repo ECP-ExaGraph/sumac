@@ -3024,7 +3024,7 @@ void fix_mate_kernel_2_try
     GraphElem* mate_,
     int device_id,
     int vertsPerThread,
-    int* finishFlag
+    char* finishFlag
 )
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -3044,7 +3044,7 @@ void fix_mate_kernel_2_try
         }
         mate_[currVert] = (partners_[currPartner] == currVert) ? currPartner : -1;
         if(mate_[currVert] == -1)
-            finishFlag[0] = 1;
+            finishFlag[0] = '1';
        // if(partners_[currPartner]==currVert){
        //     mate_[currVert] = currPartner; 
        // }
@@ -3171,7 +3171,7 @@ void run_pointer_chase_p2
     GraphElem* partners_,
     GraphElem* vertex_per_device_,
     GraphElem* vertex_per_device_host_,
-    int* finishFlag,
+    char* finishFlag,
     int device_id,
     int threadCount,
     cudaStream_t* streams
@@ -3328,155 +3328,5 @@ void run_both_phases
 
     CudaLaunch((both_phases_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[1]>>>
     (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,finishFlag,device_id,batch_id,vertsPerWarp,vertsPerThread)));
-
-}
-
-
-
-template<const int BlockSize>
-__global__
-void full_alg_kernel
-(
-    GraphElem* indices_,
-    GraphWeight* edgeWeights_,
-    GraphElem* edgeList_,
-    GraphElem* mate_,
-    GraphElem* partners_,
-    GraphElem* vertex_per_batch_device_,
-    GraphElem* vertex_per_device_,
-    char* finishFlag,
-    int device_id,
-    int batch_id,
-    int vertsPerWarp,
-    int vertsPerThread,
-    int* iterCount
-)
-{
-    unsigned int warp_id = threadIdx.x / 32;
-    unsigned int lane_id = threadIdx.x % 32;
-    unsigned int numWarps = blockDim.x / 32;
-    unsigned int block_id = blockIdx.x;
-    unsigned int g_warp_id = warp_id + (block_id * numWarps);
-    finishFlag[0] = '1';
-
-    while(finishFlag[0]=='1'){
-        GraphWeight heaviest = -1.0;
-        GraphElem heaviestPartner = -1;
-        for(int i=0;i<vertsPerWarp;i++){
-            heaviest = -1.0;
-            heaviestPartner = -1;
-            GraphElem currVertIdx = (g_warp_id * vertsPerWarp) + i;
-            GraphElem currVert = currVertIdx + vertex_per_batch_device_[batch_id];
-            if(currVert >= vertex_per_batch_device_[batch_id+1]){
-                break;
-            }
-
-            if(mate_[currVert] != -1)
-                continue;
-            
-            if(partners_[currVert] != -1){
-                if(mate_[partners_[currVert]] == -1){
-                    continue;
-                }
-            }
-            
-
-            
-            GraphElem adj1 = indices_[currVertIdx];
-            GraphElem adj2 = indices_[currVertIdx+1];
-
-
-
-            for(int j=(adj1-indices_[0])+lane_id;j<(adj2-indices_[0]);j+=WARPSIZE){ //Find heaviest edge among neighbors
-                GraphElem edge = edgeList_[j];
-                GraphWeight weight = edgeWeights_[j];
-
-                if(edge == currVert)
-                    continue;
-                if(weight>heaviest || (weight == heaviest && edge>heaviestPartner)){
-                    if(mate_[edge] != -1)
-                        continue;
-                    heaviestPartner = edge;
-                    heaviest = weight;
-                }
-            }
-            __syncwarp();
-            for (int t=WARPSIZE/2; t>=1; t/=2) {
-                GraphWeight reducedWeight = __shfl_xor_sync(0xFFFFFFFF, heaviest, t, WARPSIZE);
-                GraphElem reducedPartner = __shfl_xor_sync(0xFFFFFFFF, heaviestPartner, t, WARPSIZE);
-                if (reducedWeight > heaviest) {
-                    heaviest = reducedWeight;
-                    heaviestPartner = reducedPartner;
-                } else if (reducedWeight == heaviest) { // give priority to higher indexed candidate
-                    if (reducedPartner > heaviestPartner) {
-                        heaviestPartner = reducedPartner;
-                        heaviest = reducedWeight;
-                    }
-                }
-            }
-            partners_[currVert] = heaviestPartner;
-            
-        }
-        finishFlag[0] = '0';
-        __syncthreads();
-        int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    
-        for(int i=0;i<vertsPerThread;i++){
-            GraphElem currVert = (tid*vertsPerThread + i) + vertex_per_device_[device_id];
-            if(currVert>=vertex_per_device_[device_id+1]){
-                break;
-            }
-            GraphElem currPartner = partners_[currVert];
-            if(currPartner == -1){
-                continue;
-            }
-            if(mate_[currVert] != -1){
-                continue;
-            }
-            mate_[currVert] = (partners_[currPartner] == currVert) ? currPartner : -1;
-            if(mate_[currVert] == -1)
-                finishFlag[0] = '1';
-        }
-        __syncthreads();
-        if(threadIdx.x == 0 && blockIdx.x == 0){
-            iterCount[0]++;
-        }
-    }
-
-}
-
-
-
-void run_alg_single_gpu
-(
-    GraphElem* indices_,
-    GraphWeight* edgeWeights_,
-    GraphElem* edgeList_,
-    GraphElem* mate_,
-    GraphElem* partners_,
-    GraphElem* vertex_per_batch_device_,
-    GraphElem* vertex_per_batch_,
-    GraphElem* vertex_per_device_,
-    int device_id,
-    int batch_id,
-    int threadCount,
-    GraphElem* vertex_per_device_host_,
-    char* finishFlag,
-    cudaStream_t* streams
-)
-{
-    long long nblocks = MAX_GRIDDIM;
-    int vertsPerThread = ((vertex_per_device_host_[device_id+1] - vertex_per_device_host_[device_id])/(threadCount*nblocks))+1;
-    int vertsPerWarp = ((vertex_per_batch_[batch_id+1] - vertex_per_batch_[batch_id])/(MAX_GRIDDIM*(threadCount/WARPSIZE)))+1;
-    int* iterCount;
-    cudaMallocManaged(&iterCount,sizeof(int));
-    iterCount[0] = 0;
-    CudaSetDevice(device_id);
-
-    CudaLaunch((full_alg_kernel<BLOCKDIM02><<<nblocks,threadCount,0,streams[1]>>>
-    (indices_,edgeWeights_,edgeList_,mate_,partners_,vertex_per_batch_device_,vertex_per_device_,finishFlag,device_id,batch_id,vertsPerWarp,vertsPerThread,iterCount)));
-    CudaDeviceSynchronize();
-    printf("Iters: %d\n",iterCount[0]);
 
 }

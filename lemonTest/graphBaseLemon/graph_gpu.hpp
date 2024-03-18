@@ -63,7 +63,7 @@ class GraphGPU
     GraphElem* partners_[NGPU];
     //GraphElem** partnersPtr_[NGPU];
 
-    int* finishFlag[NGPU];
+    char* finishFlag[NGPU];
 
 
     GraphElem*   localCommNums_[NGPU];
