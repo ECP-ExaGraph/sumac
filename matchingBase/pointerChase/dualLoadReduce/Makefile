@@ -2,16 +2,23 @@ NVCC:=nvcc
 CC:=g++
 
 SM=70
-NGPU=4
+NGPU=8
 graph_ft_load=0
 check=0
 debug=0
+
+CUDA_PATH=/share/apps/cuda/10.1.243/lib64
+CUDA_INC_PATH=/share/apps/cuda/10.1.243/include
+NCCL_PATH=/people/mand884/.conda/envs/gpuload/lib
+NCCL_INC_PATH=/people/mand884/.conda/envs/gpuload/include
+
+
 #NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.18.3-1_cuda-12.0_gcc-9.4.0
 #NCCL_PATH=/lus/theta-fs0/software/thetagpu/nccl/nccl-v2.17.1-1_gcc-9.4.0-1ubuntu1-20.04/lib
 #NCCL_PATH=/usr/lib/x86_64-linux-gnu
-NCCL_PATH=/home/mandum/miniconda3/envs/rapids-23.04/lib
+#NCCL_PATH=/home/mandum/miniconda3/envs/rapids-23.04/lib
 #CUDA_PATH=/usr/lib/cuda
-CUDA_PATH=/home/mandum/miniconda3/envs/rapids-23.04/lib #Add to Linker
+#CUDA_PATH=/home/mandum/miniconda3/envs/rapids-23.04/lib #Add to Linker
 ifeq ($(debug), 1)
 	CUFLAGS = -g -G -Ddebug --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
                   -Xcompiler -fopenmp -DMULTIPHASE -DNGPU=${NGPU} -DPRINT
@@ -20,7 +27,8 @@ else
 	CUFLAGS = -O3 -Xptxas -O3 --std=c++14 --gpu-architecture=compute_${SM} --gpu-code=sm_${SM},compute_${SM} \
                   -Xcompiler -O3 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
 	CFLAGS = -O3 -std=c++14 -Xcompiler -fopenmp -DMULTIPHASE -DPRINT -DNGPU=${NGPU}
-	LDFLAGS = -L${NCCL_PATH} -L${CUDA_PATH} -lnccl -lcudart -lcuda
+	LDFLAGS = -I${NCCL_INC_PATH} -I${CUDA_INC_PATH} -L${NCCL_PATH} -L${CUDA_PATH} -lnccl -lcudart -lcuda
+#LDFLAGS = -L${NCCL_PATH} -L${CUDA_PATH} -lnccl -lcudart -lcuda
 endif
 
 ifeq ($(check),1)
@@ -55,10 +63,13 @@ graph.o: graph.cpp graph.hpp types.hpp
 	${NVCC} ${CFLAGS} -c $< -o $@
 
 graph_gpu.o: graph_gpu.cpp graph_gpu.hpp cuda_wrapper.hpp types.hpp
-	${NVCC} ${CFLAGS} -c $< -o $@
+	${NVCC} ${CFLAGS} -c -I${CUDA_INC_PATH} -I${NCCL_INC_PATH} $< -o $@
+#	${NVCC} ${CFLAGS} -c $< -o $@
 
 main.o: main.cpp graph.hpp graph_gpu.hpp cuda_wrapper.hpp types.hpp
+#	${NVCC} ${CFLAGS} -I${CUDA_INC_PATH} -c $< -o $@
 	${NVCC} ${CFLAGS} -I/usr/local/cuda/include -c $< -o $@
+
 
 graph_cuda.o: graph_cuda.cu graph_cuda.hpp graph.cpp graph.hpp
 	${NVCC} ${CFLAGS} -c $< -o $@

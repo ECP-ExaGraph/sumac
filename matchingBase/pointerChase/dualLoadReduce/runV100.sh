@@ -1,13 +1,12 @@
 #!/bin/bash
-#SBATCH -t 03:00:00
+#SBATCH -t 01:00:00
 #SBATCH -N 1
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:2
 #SBATCH -A pacer
-#SBATCH -p a100
-#SBATCH --nodelist=a100-06
+#SBATCH -p dl
 #SBATCH -J sumac
-#SBATCH -o friendsterScalePCIe.out
-#SBATCH -e friendsterScalePCIe.err
+#SBATCH -o U1aV100.out
+#SBATCH -e U1aV100.err
 source /etc/profile.d/modules.sh
 
 module load cuda/10.1.243
@@ -25,11 +24,11 @@ echo "Pointer Chasing"
 
 
 
-gfile="/qfs/projects/pacer/sumacData/com-Friendster-r.bin"
+gfile="/qfs/projects/pacer/sumacData/U1a.bin"
 
 #/people/mand884/sumac/matchingBase/pointerChase/dualLoadReduce/./redPCMatch1 ${gfile} 3 1
 #/people/mand884/sumac/matchingBase/pointerChase/dualLoadReduce/./redPCMatch2 ${gfile} 2 1
-for i in {3..8}; do
+for i in {1..2}; do
     echo "GPU ${i}"
     /people/mand884/sumac/matchingBase/pointerChase/dualLoadReduce/./redPCMatch${i} ${gfile} 1 1
 done
