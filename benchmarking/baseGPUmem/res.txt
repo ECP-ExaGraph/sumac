@@ -1,5 +1,0 @@
-Transfer time (Size = 1000000) : 1 -> 0 : 0.092288
-Transfer time (Size = 1000000) : 2 -> 1 : 0.094016
-Transfer time (Size = 1000000) : 3 -> 2 : 0.097888
-Transfer time (Size = 1000000) : 4 -> 3 : 0.124896
-Transfer time (Size = 1000000) : 5 -> 4 : 0.105152
