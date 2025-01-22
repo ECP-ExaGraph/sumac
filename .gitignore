@@ -12,6 +12,5 @@ OMPSuitor/
 *.bin
 *.mtx
 *.tar
-*.txt
 suitorBase/
 *.err
